@@ -85,7 +85,6 @@ const (
 
 // Notification config constants.
 const (
-	NotifyMQTTSubSys     = "notify_mqtt"
 	NotifyMySQLSubSys    = "notify_mysql"
 	NotifyNATSSubSys     = "notify_nats"
 	NotifyNSQSubSys      = "notify_nsq"
@@ -116,7 +115,6 @@ var SubSystems = set.CreateStringSet(
 	ScannerSubSys,
 	HealSubSys,
 	NotifyESSubSys,
-	NotifyMQTTSubSys,
 	NotifyMySQLSubSys,
 	NotifyNATSSubSys,
 	NotifyNSQSubSys,

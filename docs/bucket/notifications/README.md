@@ -39,8 +39,8 @@ Bucket events can be published to the following targets:
 
 | Supported Notification Targets    |                             |                                 |
 | :-------------------------------- | --------------------------- | ------------------------------- |
-| [`MQTT`](#MQTT)                   | [`Redis`](#Redis)           | [`MySQL`](#MySQL)               |
-| [`NATS`](#NATS)                   | [`NSQ`](#NSQ)               |                                 |
+| [`Redis`](#Redis)                 | [`MySQL`](#MySQL)           | [`NATS`](#NATS)                 |
+| [`NSQ`](#NSQ)                     |                             |                                 |
 | [`Elasticsearch`](#Elasticsearch) | [`PostgreSQL`](#PostgreSQL) | [`Webhooks`](#webhooks)         |
 
 ## Prerequisites
@@ -51,7 +51,6 @@ Bucket events can be published to the following targets:
 ```
 $ mc admin config get myminio | grep notify
 notify_webhook        publish bucket notifications to webhook endpoints
-notify_mqtt           publish bucket notifications to MQTT endpoints
 notify_nats           publish bucket notifications to NATS endpoints
 notify_nsq            publish bucket notifications to NSQ endpoints
 notify_mysql          publish bucket notifications to MySQL databases
@@ -64,131 +63,6 @@ notify_redis          publish bucket notifications to Redis datastores
 > - '\*' at the end of arg means its mandatory.
 > - '\*' at the end of the values, means its the default value for the arg.
 > - When configured using environment variables, the `:name` can be specified using this format `MINIO_NOTIFY_WEBHOOK_ENABLE_<name>`.
-
-<a name="MQTT"></a>
-
-## Publish MinIO events MQTT
-
-Install an MQTT Broker from [here](https://mosquitto.org/).
-
-### Step 1: Add MQTT endpoint to MinIO
-
-The MQTT configuration is located as `notify_mqtt` key. Create a configuration key-value pair here for your MQTT instance. The key is a name for your MQTT endpoint, and the value is a collection of key-value parameters described in the table below.
-
-```
-KEY:
-notify_mqtt[:name]  publish bucket notifications to MQTT endpoints
-
-ARGS:
-broker*              (uri)       MQTT server endpoint e.g. `tcp://localhost:1883`
-topic*               (string)    name of the MQTT topic to publish
-username             (string)    MQTT username
-password             (string)    MQTT password
-qos                  (number)    set the quality of service priority, defaults to '0'
-keep_alive_interval  (duration)  keep-alive interval for MQTT connections in s,m,h,d
-reconnect_interval   (duration)  reconnect interval for MQTT connections in s,m,h,d
-queue_dir            (path)      staging dir for undelivered messages e.g. '/home/events'
-queue_limit          (number)    maximum limit for undelivered messages, defaults to '100000'
-comment              (sentence)  optionally add a comment to this setting
-```
-
-or environment variables
-
-```
-KEY:
-notify_mqtt[:name]  publish bucket notifications to MQTT endpoints
-
-ARGS:
-MINIO_NOTIFY_MQTT_ENABLE*              (on|off)    enable notify_mqtt target, default is 'off'
-MINIO_NOTIFY_MQTT_BROKER*              (uri)       MQTT server endpoint e.g. `tcp://localhost:1883`
-MINIO_NOTIFY_MQTT_TOPIC*               (string)    name of the MQTT topic to publish
-MINIO_NOTIFY_MQTT_USERNAME             (string)    MQTT username
-MINIO_NOTIFY_MQTT_PASSWORD             (string)    MQTT password
-MINIO_NOTIFY_MQTT_QOS                  (number)    set the quality of service priority, defaults to '0'
-MINIO_NOTIFY_MQTT_KEEP_ALIVE_INTERVAL  (duration)  keep-alive interval for MQTT connections in s,m,h,d
-MINIO_NOTIFY_MQTT_RECONNECT_INTERVAL   (duration)  reconnect interval for MQTT connections in s,m,h,d
-MINIO_NOTIFY_MQTT_QUEUE_DIR            (path)      staging dir for undelivered messages e.g. '/home/events'
-MINIO_NOTIFY_MQTT_QUEUE_LIMIT          (number)    maximum limit for undelivered messages, defaults to '100000'
-MINIO_NOTIFY_MQTT_COMMENT              (sentence)  optionally add a comment to this setting
-```
-
-MinIO supports persistent event store. The persistent store will backup events when the MQTT broker goes offline and replays it when the broker comes back online. The event store can be configured by setting the directory path in `queue_dir` field and the maximum limit of events in the queue_dir in `queue_limit` field. For eg, the `queue_dir` can be `/home/events` and `queue_limit` can be `1000`. By default, the `queue_limit` is set to 100000.
-
-To update the configuration, use `mc admin config get` command to get the current configuration.
-
-```sh
-$ mc admin config get myminio/ notify_mqtt
-notify_mqtt:1 broker="" password="" queue_dir="" queue_limit="0" reconnect_interval="0s"  keep_alive_interval="0s" qos="0" topic="" username=""
-```
-
-Use `mc admin config set` command to update the configuration for the deployment. Restart the MinIO server to put the changes into effect. The server will print a line like `SQS ARNs: arn:minio:sqs::1:mqtt` at start-up if there were no errors.
-
-```sh
-$ mc admin config set myminio notify_mqtt:1 broker="tcp://localhost:1883" password="" queue_dir="" queue_limit="0" reconnect_interval="0s"  keep_alive_interval="0s" qos="1" topic="minio" username=""
-```
-
-MinIO supports any MQTT server that supports MQTT 3.1 or 3.1.1 and can connect to them over TCP, TLS, or a Websocket connection using `tcp://`, `tls://`, or `ws://` respectively as the scheme for the broker url. See the [Go Client](http://www.eclipse.org/paho/clients/golang/) documentation for more information.
-
-Note that, you can add as many MQTT server endpoint configurations as needed by providing an identifier (like "1" in the example above) for the MQTT instance and an object of per-server configuration parameters.
-
-### Step 2: Enable bucket notification using MinIO client
-
-We will enable bucket event notification to trigger whenever a JPEG image is uploaded or deleted `images` bucket on `myminio` server. Here ARN value is `arn:minio:sqs::1:mqtt`.
-
-```
-mc mb myminio/images
-mc event add  myminio/images arn:minio:sqs::1:mqtt --suffix .jpg
-mc event list myminio/images
-arn:minio:sqs::1:mqtt s3:ObjectCreated:*,s3:ObjectRemoved:* Filter: suffix=”.jpg”
-```
-
-### Step 3: Test on MQTT
-
-The python program below waits on mqtt topic `/minio` and prints event notifications on the console. We use [paho-mqtt](https://pypi.python.org/pypi/paho-mqtt/) library to do this.
-
-```py
-#!/usr/bin/env python3
-from __future__ import print_function
-import paho.mqtt.client as mqtt
-
-# This is the Subscriber
-
-def on_connect(client, userdata, flags, rc):
-  print("Connected with result code "+str(rc))
-  # qos level is set to 1
-  client.subscribe("minio", 1)
-
-def on_message(client, userdata, msg):
-    print(msg.payload)
-
-# client_id is a randomly generated unique ID for the mqtt broker to identify the connection.
-client = mqtt.Client(client_id="myclientid",clean_session=False)
-
-client.on_connect = on_connect
-client.on_message = on_message
-
-client.connect("localhost",1883,60)
-client.loop_forever()
-```
-
-Execute this example python program to watch for MQTT events on the console.
-
-```py
-python mqtt.py
-```
-
-Open another terminal and upload a JPEG image into `images` bucket.
-
-```
-mc cp myphoto.jpg myminio/images
-```
-
-You should receive the following event notification via MQTT once the upload completes.
-
-```py
-python mqtt.py
-{“Records”:[{“eventVersion”:”2.0",”eventSource”:”aws:s3",”awsRegion”:”",”eventTime”:”2016–09–08T22:34:38.226Z”,”eventName”:”s3:ObjectCreated:Put”,”userIdentity”:{“principalId”:”minio”},”requestParameters”:{“sourceIPAddress”:”10.1.10.150:44576"},”responseElements”:{},”s3":{“s3SchemaVersion”:”1.0",”configurationId”:”Config”,”bucket”:{“name”:”images”,”ownerIdentity”:{“principalId”:”minio”},”arn”:”arn:aws:s3:::images”},”object”:{“key”:”myphoto.jpg”,”size”:200436,”sequencer”:”147279EAF9F40933"}}}],”level”:”info”,”msg”:””,”time”:”2016–09–08T15:34:38–07:00"}
-```
 
 <a name="Elasticsearch"></a>
 

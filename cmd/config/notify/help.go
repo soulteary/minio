@@ -73,67 +73,6 @@ var (
 		},
 	}
 
-	HelpMQTT = config.HelpKVS{
-		config.HelpKV{
-			Key:         target.MqttBroker,
-			Description: "MQTT server endpoint e.g. `tcp://localhost:1883`",
-			Type:        "uri",
-		},
-		config.HelpKV{
-			Key:         target.MqttTopic,
-			Description: "name of the MQTT topic to publish",
-			Type:        "string",
-		},
-		config.HelpKV{
-			Key:         target.MqttUsername,
-			Description: "MQTT username",
-			Optional:    true,
-			Type:        "string",
-		},
-		config.HelpKV{
-			Key:         target.MqttPassword,
-			Description: "MQTT password",
-			Optional:    true,
-			Type:        "string",
-		},
-		config.HelpKV{
-			Key:         target.MqttQoS,
-			Description: "set the quality of service priority, defaults to '0'",
-			Optional:    true,
-			Type:        "number",
-		},
-		config.HelpKV{
-			Key:         target.MqttKeepAliveInterval,
-			Description: "keep-alive interval for MQTT connections in s,m,h,d",
-			Optional:    true,
-			Type:        "duration",
-		},
-		config.HelpKV{
-			Key:         target.MqttReconnectInterval,
-			Description: "reconnect interval for MQTT connections in s,m,h,d",
-			Optional:    true,
-			Type:        "duration",
-		},
-		config.HelpKV{
-			Key:         target.MqttQueueDir,
-			Description: queueDirComment,
-			Optional:    true,
-			Type:        "path",
-		},
-		config.HelpKV{
-			Key:         target.MqttQueueLimit,
-			Description: queueLimitComment,
-			Optional:    true,
-			Type:        "number",
-		},
-		config.HelpKV{
-			Key:         config.Comment,
-			Description: config.DefaultComment,
-			Optional:    true,
-			Type:        "sentence",
-		},
-	}
-
 	HelpPostgres = config.HelpKVS{
 		config.HelpKV{
 			Key:         target.PostgresConnectionString,

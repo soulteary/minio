@@ -1410,10 +1410,6 @@ func migrateV18ToV19() error {
 		srvConfig.Notify.MySQL = cv18.Notify.MySQL
 	}
 
-	// V18 will not have mqtt support, so we add that here.
-	srvConfig.Notify.MQTT = make(map[string]target.MQTTArgs)
-	srvConfig.Notify.MQTT["1"] = target.MQTTArgs{}
-
 	// Load browser config from existing config in the file.
 	srvConfig.Browser = cv18.Browser
 
@@ -1500,13 +1496,6 @@ func migrateV19ToV20() error {
 		srvConfig.Notify.MySQL = cv19.Notify.MySQL
 	}
 
-	if len(cv19.Notify.MQTT) == 0 {
-		srvConfig.Notify.MQTT = make(map[string]target.MQTTArgs)
-		srvConfig.Notify.MQTT["1"] = target.MQTTArgs{}
-	} else {
-		srvConfig.Notify.MQTT = cv19.Notify.MQTT
-	}
-
 	// Load browser config from existing config in the file.
 	srvConfig.Browser = cv19.Browser
 
@@ -1587,13 +1576,6 @@ func migrateV20ToV21() error {
 		}
 	} else {
 		srvConfig.Notify.MySQL = cv20.Notify.MySQL
-	}
-
-	if len(cv20.Notify.MQTT) == 0 {
-		srvConfig.Notify.MQTT = make(map[string]target.MQTTArgs)
-		srvConfig.Notify.MQTT["1"] = target.MQTTArgs{}
-	} else {
-		srvConfig.Notify.MQTT = cv20.Notify.MQTT
 	}
 
 	// Load browser config from existing config in the file.
@@ -1681,13 +1663,6 @@ func migrateV21ToV22() error {
 		srvConfig.Notify.MySQL = cv21.Notify.MySQL
 	}
 
-	if len(cv21.Notify.MQTT) == 0 {
-		srvConfig.Notify.MQTT = make(map[string]target.MQTTArgs)
-		srvConfig.Notify.MQTT["1"] = target.MQTTArgs{}
-	} else {
-		srvConfig.Notify.MQTT = cv21.Notify.MQTT
-	}
-
 	// Load browser config from existing config in the file.
 	srvConfig.Browser = cv21.Browser
 
@@ -1771,13 +1746,6 @@ func migrateV22ToV23() error {
 		}
 	} else {
 		srvConfig.Notify.MySQL = cv22.Notify.MySQL
-	}
-
-	if len(cv22.Notify.MQTT) == 0 {
-		srvConfig.Notify.MQTT = make(map[string]target.MQTTArgs)
-		srvConfig.Notify.MQTT["1"] = target.MQTTArgs{}
-	} else {
-		srvConfig.Notify.MQTT = cv22.Notify.MQTT
 	}
 
 	// Load browser config from existing config in the file.
@@ -1874,13 +1842,6 @@ func migrateV23ToV24() error {
 		srvConfig.Notify.MySQL = cv23.Notify.MySQL
 	}
 
-	if len(cv23.Notify.MQTT) == 0 {
-		srvConfig.Notify.MQTT = make(map[string]target.MQTTArgs)
-		srvConfig.Notify.MQTT["1"] = target.MQTTArgs{}
-	} else {
-		srvConfig.Notify.MQTT = cv23.Notify.MQTT
-	}
-
 	// Load browser config from existing config in the file.
 	srvConfig.Browser = cv23.Browser
 
@@ -1973,13 +1934,6 @@ func migrateV24ToV25() error {
 		}
 	} else {
 		srvConfig.Notify.MySQL = cv24.Notify.MySQL
-	}
-
-	if len(cv24.Notify.MQTT) == 0 {
-		srvConfig.Notify.MQTT = make(map[string]target.MQTTArgs)
-		srvConfig.Notify.MQTT["1"] = target.MQTTArgs{}
-	} else {
-		srvConfig.Notify.MQTT = cv24.Notify.MQTT
 	}
 
 	// Load browser config from existing config in the file.
@@ -2079,13 +2033,6 @@ func migrateV25ToV26() error {
 		}
 	} else {
 		srvConfig.Notify.MySQL = cv25.Notify.MySQL
-	}
-
-	if len(cv25.Notify.MQTT) == 0 {
-		srvConfig.Notify.MQTT = make(map[string]target.MQTTArgs)
-		srvConfig.Notify.MQTT["1"] = target.MQTTArgs{}
-	} else {
-		srvConfig.Notify.MQTT = cv25.Notify.MQTT
 	}
 
 	// Load browser config from existing config in the file.
@@ -2505,9 +2452,6 @@ func migrateMinioSysConfigToKV(objAPI ObjectLayer) error {
 
 	for k, args := range cfg.Notify.Elasticsearch {
 		notify.SetNotifyES(newCfg, k, args)
-	}
-	for k, args := range cfg.Notify.MQTT {
-		notify.SetNotifyMQTT(newCfg, k, args)
 	}
 	for k, args := range cfg.Notify.MySQL {
 		notify.SetNotifyMySQL(newCfg, k, args)

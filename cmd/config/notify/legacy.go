@@ -17,7 +17,6 @@
 package notify
 
 import (
-	"fmt"
 	"strconv"
 
 	"github.com/minio/minio/cmd/config"
@@ -419,62 +418,6 @@ func SetNotifyMySQL(s config.Config, sqlName string, cfg target.MySQLArgs) error
 		config.KV{
 			Key:   target.MySQLMaxOpenConnections,
 			Value: strconv.Itoa(cfg.MaxOpenConnections),
-		},
-	}
-
-	return nil
-}
-
-// SetNotifyMQTT - helper for config migration from older config.
-func SetNotifyMQTT(s config.Config, mqttName string, cfg target.MQTTArgs) error {
-	if !cfg.Enable {
-		return nil
-	}
-
-	if err := cfg.Validate(); err != nil {
-		return err
-	}
-
-	s[config.NotifyMQTTSubSys][mqttName] = config.KVS{
-		config.KV{
-			Key:   config.Enable,
-			Value: config.EnableOn,
-		},
-		config.KV{
-			Key:   target.MqttBroker,
-			Value: cfg.Broker.String(),
-		},
-		config.KV{
-			Key:   target.MqttTopic,
-			Value: cfg.Topic,
-		},
-		config.KV{
-			Key:   target.MqttQoS,
-			Value: fmt.Sprintf("%d", cfg.QoS),
-		},
-		config.KV{
-			Key:   target.MqttUsername,
-			Value: cfg.User,
-		},
-		config.KV{
-			Key:   target.MqttPassword,
-			Value: cfg.Password,
-		},
-		config.KV{
-			Key:   target.MqttReconnectInterval,
-			Value: cfg.MaxReconnectInterval.String(),
-		},
-		config.KV{
-			Key:   target.MqttKeepAliveInterval,
-			Value: cfg.KeepAlive.String(),
-		},
-		config.KV{
-			Key:   target.MqttQueueDir,
-			Value: cfg.QueueDir,
-		},
-		config.KV{
-			Key:   target.MqttQueueLimit,
-			Value: strconv.Itoa(int(cfg.QueueLimit)),
 		},
 	}
 

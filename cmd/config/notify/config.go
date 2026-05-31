@@ -24,7 +24,6 @@ import (
 // information about various notification targets.
 type Config struct {
 	Elasticsearch map[string]target.ElasticsearchArgs `json:"elasticsearch"`
-	MQTT          map[string]target.MQTTArgs          `json:"mqtt"`
 	MySQL         map[string]target.MySQLArgs         `json:"mysql"`
 	NATS          map[string]target.NATSArgs          `json:"nats"`
 	NSQ           map[string]target.NSQArgs           `json:"nsq"`
@@ -42,7 +41,6 @@ func NewConfig() Config {
 	// Make sure to initialize notification targets
 	cfg := Config{
 		NSQ:           make(map[string]target.NSQArgs),
-		MQTT:          make(map[string]target.MQTTArgs),
 		NATS:          make(map[string]target.NATSArgs),
 		Redis:         make(map[string]target.RedisArgs),
 		MySQL:         make(map[string]target.MySQLArgs),
@@ -51,7 +49,6 @@ func NewConfig() Config {
 		Elasticsearch: make(map[string]target.ElasticsearchArgs),
 	}
 	cfg.NSQ[defaultTarget] = target.NSQArgs{}
-	cfg.MQTT[defaultTarget] = target.MQTTArgs{}
 	cfg.NATS[defaultTarget] = target.NATSArgs{}
 	cfg.Redis[defaultTarget] = target.RedisArgs{}
 	cfg.MySQL[defaultTarget] = target.MySQLArgs{}

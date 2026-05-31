@@ -14,8 +14,8 @@
 
 | 支持的通知目标    |                             |                                 |
 | :-------------------------------- | --------------------------- | ------------------------------- |
-| [`MQTT`](#MQTT)                   | [`Redis`](#Redis)           | [`MySQL`](#MySQL)               |
-| [`NATS`](#NATS)                   | [`NSQ`](#NSQ)               |                                 |
+| [`Redis`](#Redis)                 | [`MySQL`](#MySQL)           | [`NATS`](#NATS)                 |
+| [`NSQ`](#NSQ)                     |                             |                                 |
 | [`Elasticsearch`](#Elasticsearch) | [`PostgreSQL`](#PostgreSQL) | [`Webhooks`](#webhooks)         |
 
 ## 前提条件
@@ -26,7 +26,6 @@
 ```
 $ mc admin config get myminio | grep notify
 notify_webhook        publish bucket notifications to webhook endpoints
-notify_mqtt           publish bucket notifications to MQTT endpoints
 notify_nats           publish bucket notifications to NATS endpoints
 notify_nsq            publish bucket notifications to NSQ endpoints
 notify_mysql          publish bucket notifications to MySQL databases
@@ -39,132 +38,6 @@ notify_redis          publish bucket notifications to Redis datastores
 > - '\*' 结尾的参数是必填的.
 > - '\*' 结尾的值，是参数的的默认值.
 > - 当通过环境变量配置的时候, `:name` 可以通过这样 `MINIO_NOTIFY_WEBHOOK_ENABLE_<name>` 的格式指定.
-
-<a name="MQTT"></a>
-## 使用MQTT发布MinIO事件
-
-从 [这里](https://mosquitto.org/)安装MQTT Broker。
-
-### 第一步: 添加MQTT endpoint到MinIO
-
-MQTT的配置信息位于`notify_mqtt`这个顶级的key下。在这里为你的MQTT实例创建配置信息键值对。key是你的MQTT endpoint的名称，value是下面表格中列的键值对集合。
-
-```
-KEY:
-notify_mqtt[:name]  发布存储桶通知到MQTT endpoints
-
-ARGS:
-broker*              (uri)       MQTT服务 endpoint,例如 `tcp://localhost:1883`
-topic*               (string)    要发布的MQTT topic名称
-username             (string)    MQTT 用户名
-password             (string)    MQTT 密码
-qos                  (number)    设置服务质量的级别, 默认是 '0'
-keep_alive_interval  (duration)  MQTT连接的保持活动间隔（s，m，h，d）
-reconnect_interval   (duration)  MQTT连接的重新连接间隔（s，m，h，d）
-queue_dir            (path)      未发送消息的暂存目录 例如 '/home/events'
-queue_limit          (number)    未发送消息的最大限制, 默认是'100000'
-comment              (sentence)  可选的注释
-```
-
-或者通过环境变量(配置说明参考上面)
-
-```
-KEY:
-notify_mqtt[:name]  publish bucket notifications to MQTT endpoints
-
-ARGS:
-MINIO_NOTIFY_MQTT_ENABLE*              (on|off)    enable notify_mqtt target, default is 'off'
-MINIO_NOTIFY_MQTT_BROKER*              (uri)       MQTT server endpoint e.g. `tcp://localhost:1883`
-MINIO_NOTIFY_MQTT_TOPIC*               (string)    name of the MQTT topic to publish
-MINIO_NOTIFY_MQTT_USERNAME             (string)    MQTT username
-MINIO_NOTIFY_MQTT_PASSWORD             (string)    MQTT password
-MINIO_NOTIFY_MQTT_QOS                  (number)    set the quality of service priority, defaults to '0'
-MINIO_NOTIFY_MQTT_KEEP_ALIVE_INTERVAL  (duration)  keep-alive interval for MQTT connections in s,m,h,d
-MINIO_NOTIFY_MQTT_RECONNECT_INTERVAL   (duration)  reconnect interval for MQTT connections in s,m,h,d
-MINIO_NOTIFY_MQTT_QUEUE_DIR            (path)      staging dir for undelivered messages e.g. '/home/events'
-MINIO_NOTIFY_MQTT_QUEUE_LIMIT          (number)    maximum limit for undelivered messages, defaults to '100000'
-MINIO_NOTIFY_MQTT_COMMENT              (sentence)  optionally add a comment to this setting
-```
-
-MinIO支持持久事件存储。持久存储将在MQTT broker离线时备份事件，并在broker恢复在线时重播事件。事件存储的目录可以通过`queue_dir`字段设置，存储的最大限制可以通过`queue_limit`设置。例如, `queue_dir`可以设置为`/home/events`, 并且`queue_limit`可以设置为`1000`. 默认情况下 `queue_limit` 是100000.
-
-更新配置前, 可以使用`mc admin config get`命令获取当前配置.
-
-```sh
-$ mc admin config get myminio/ notify_mqtt
-notify_mqtt:1 broker="" password="" queue_dir="" queue_limit="0" reconnect_interval="0s"  keep_alive_interval="0s" qos="0" topic="" username=""
-```
-
-使用`mc admin config set`命令更新配置后，重启MinIO Server让配置生效。 如果一切顺利，MinIO Server会在启动时输出一行信息，类似 `SQS ARNs: arn:minio:sqs::1:mqtt`。
-
-```sh
-$ mc admin config set myminio notify_mqtt:1 broker="tcp://localhost:1883" password="" queue_dir="" queue_limit="0" reconnect_interval="0s"  keep_alive_interval="0s" qos="1" topic="minio" username=""
-```
-
-更新完配置文件后，重启MinIO Server让配置生效。如果一切顺利，MinIO Server会在启动时输出一行信息，类似 `SQS ARNs:  arn:minio:sqs:us-east-1:1:mqtt`。
-
-MinIO支持任何支持MQTT 3.1或3.1.1的MQTT服务器，并且可以使用`tcp://`, `tls://`, or `ws://`通过TCP，TLS或Websocket连接,作为代理URL的方案。 更多信息，请参考 [Go Client](http://www.eclipse.org/paho/clients/golang/)。
-
-请注意, 根据你的需要，你可以添加任意多个MQTT server endpoint，只要提供MQTT实例的标识符（如上例中的“ 1”）和每个实例配置参数的信息即可。
-
-### 第二步: 使用MinIO客户端启用bucket通知
-
-如果一个JPEG图片上传到`myminio` server里的`images` 存储桶或者从桶中删除，一个存储桶事件通知就会被触发。 这里ARN值是`arn:minio:sqs::1:mqtt`。
-
-```
-mc mb myminio/images
-mc event add  myminio/images arn:minio:sqs::1:mqtt --suffix .jpg
-mc event list myminio/images
-arn:minio:sqs::1:mqtt s3:ObjectCreated:*,s3:ObjectRemoved:* Filter: suffix=”.jpg”
-```
-
-### 第三步：验证MQTT
-
-下面的python程序等待mqtt topic `/minio`，并在控制台上打印事件通知。 我们使用[paho-mqtt](https://pypi.python.org/pypi/paho-mqtt/)库来执行此操作。
-
-```py
-#!/usr/bin/env python3
-from __future__ import print_function
-import paho.mqtt.client as mqtt
-
-# This is the Subscriber
-
-def on_connect(client, userdata, flags, rc):
-  print("Connected with result code "+str(rc))
-  # qos level is set to 1
-  client.subscribe("minio", 1)
-
-def on_message(client, userdata, msg):
-    print(msg.payload)
-
-# client_id is a randomly generated unique ID for the mqtt broker to identify the connection.
-client = mqtt.Client(client_id="myclientid",clean_session=False)
-
-client.on_connect = on_connect
-client.on_message = on_message
-
-client.connect("localhost",1883,60)
-client.loop_forever()
-```
-
-执行这个python示例程序来观察MQTT事件。
-
-```py
-python mqtt.py
-```
-
-打开一个新的terminal终端并上传一张JPEG图片到``images`` 存储桶。
-
-```
-mc cp myphoto.jpg myminio/images
-```
-
-一旦上传完毕，你应该会通过MQTT收到下面的事件通知。
-
-```py
-python mqtt.py
-{“Records”:[{“eventVersion”:”2.0",”eventSource”:”aws:s3",”awsRegion”:”",”eventTime”:”2016–09–08T22:34:38.226Z”,”eventName”:”s3:ObjectCreated:Put”,”userIdentity”:{“principalId”:”minio”},”requestParameters”:{“sourceIPAddress”:”10.1.10.150:44576"},”responseElements”:{},”s3":{“s3SchemaVersion”:”1.0",”configurationId”:”Config”,”bucket”:{“name”:”images”,”ownerIdentity”:{“principalId”:”minio”},”arn”:”arn:aws:s3:::images”},”object”:{“key”:”myphoto.jpg”,”size”:200436,”sequencer”:”147279EAF9F40933"}}}],”level”:”info”,”msg”:””,”time”:”2016–09–08T15:34:38–07:00"}
-```
 
 <a name="Elasticsearch"></a>
 ## 使用Elasticsearch发布MinIO事件

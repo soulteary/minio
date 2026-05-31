@@ -355,7 +355,6 @@ type serverConfigV12 struct {
 
 type notifierV3 struct {
 	Elasticsearch map[string]target.ElasticsearchArgs `json:"elasticsearch"`
-	MQTT          map[string]target.MQTTArgs          `json:"mqtt"`
 	MySQL         map[string]target.MySQLArgs         `json:"mysql"`
 	NATS          map[string]target.NATSArgs          `json:"nats"`
 	PostgreSQL    map[string]target.PostgreSQLArgs    `json:"postgresql"`

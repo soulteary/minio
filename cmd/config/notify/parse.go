@@ -23,7 +23,6 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/minio/minio/cmd/config"
 	"github.com/minio/minio/cmd/logger"
@@ -116,11 +115,6 @@ func FetchRegisteredTargets(ctx context.Context, cfg config.Config, transport *h
 		return nil, err
 	}
 
-	mqttTargets, err := GetNotifyMQTT(cfg[config.NotifyMQTTSubSys], transport.TLSClientConfig.RootCAs)
-	if err != nil {
-		return nil, err
-	}
-
 	mysqlTargets, err := GetNotifyMySQL(cfg[config.NotifyMySQLSubSys])
 	if err != nil {
 		return nil, err
@@ -156,27 +150,6 @@ func FetchRegisteredTargets(ctx context.Context, cfg config.Config, transport *h
 			continue
 		}
 		newTarget, err := target.NewElasticsearchTarget(id, args, ctx.Done(), logger.LogOnceIf, test)
-		if err != nil {
-			targetsOffline = true
-			if returnOnTargetError {
-				return nil, err
-			}
-			_ = newTarget.Close()
-		}
-		if err = targetList.Add(newTarget); err != nil {
-			logger.LogIf(context.Background(), err)
-			if returnOnTargetError {
-				return nil, err
-			}
-		}
-	}
-
-	for id, args := range mqttTargets {
-		if !args.Enable {
-			continue
-		}
-		args.RootCAs = transport.TLSClientConfig.RootCAs
-		newTarget, err := target.NewMQTTTarget(id, args, ctx.Done(), logger.LogOnceIf, test)
 		if err != nil {
 			targetsOffline = true
 			if returnOnTargetError {
@@ -322,7 +295,6 @@ func FetchRegisteredTargets(ctx context.Context, cfg config.Config, transport *h
 // DefaultNotificationKVS - default notification list of kvs.
 var (
 	DefaultNotificationKVS = map[string]config.KVS{
-		config.NotifyMQTTSubSys:     DefaultMQTTKVS,
 		config.NotifyMySQLSubSys:    DefaultMySQLKVS,
 		config.NotifyNATSSubSys:     DefaultNATSKVS,
 		config.NotifyNSQSubSys:      DefaultNSQKVS,
@@ -367,161 +339,6 @@ func mergeTargets(cfgTargets map[string]config.KVS, envname string, defaultKVS c
 		newCfgTargets[tgt] = kv
 	}
 	return newCfgTargets
-}
-
-// DefaultMQTTKVS - default MQTT config
-var (
-	DefaultMQTTKVS = config.KVS{
-		config.KV{
-			Key:   config.Enable,
-			Value: config.EnableOff,
-		},
-		config.KV{
-			Key:   target.MqttBroker,
-			Value: "",
-		},
-		config.KV{
-			Key:   target.MqttTopic,
-			Value: "",
-		},
-		config.KV{
-			Key:   target.MqttPassword,
-			Value: "",
-		},
-		config.KV{
-			Key:   target.MqttUsername,
-			Value: "",
-		},
-		config.KV{
-			Key:   target.MqttQoS,
-			Value: "0",
-		},
-		config.KV{
-			Key:   target.MqttKeepAliveInterval,
-			Value: "0s",
-		},
-		config.KV{
-			Key:   target.MqttReconnectInterval,
-			Value: "0s",
-		},
-		config.KV{
-			Key:   target.MqttQueueDir,
-			Value: "",
-		},
-		config.KV{
-			Key:   target.MqttQueueLimit,
-			Value: "0",
-		},
-	}
-)
-
-// GetNotifyMQTT - returns a map of registered notification 'mqtt' targets
-func GetNotifyMQTT(mqttKVS map[string]config.KVS, rootCAs *x509.CertPool) (map[string]target.MQTTArgs, error) {
-	mqttTargets := make(map[string]target.MQTTArgs)
-	for k, kv := range mergeTargets(mqttKVS, target.EnvMQTTEnable, DefaultMQTTKVS) {
-		enableEnv := target.EnvMQTTEnable
-		if k != config.Default {
-			enableEnv = enableEnv + config.Default + k
-		}
-
-		enabled, err := config.ParseBool(env.Get(enableEnv, kv.Get(config.Enable)))
-		if err != nil {
-			return nil, err
-		}
-		if !enabled {
-			continue
-		}
-
-		brokerEnv := target.EnvMQTTBroker
-		if k != config.Default {
-			brokerEnv = brokerEnv + config.Default + k
-		}
-
-		brokerURL, err := xnet.ParseURL(env.Get(brokerEnv, kv.Get(target.MqttBroker)))
-		if err != nil {
-			return nil, err
-		}
-
-		reconnectIntervalEnv := target.EnvMQTTReconnectInterval
-		if k != config.Default {
-			reconnectIntervalEnv = reconnectIntervalEnv + config.Default + k
-		}
-		reconnectInterval, err := time.ParseDuration(env.Get(reconnectIntervalEnv,
-			kv.Get(target.MqttReconnectInterval)))
-		if err != nil {
-			return nil, err
-		}
-
-		keepAliveIntervalEnv := target.EnvMQTTKeepAliveInterval
-		if k != config.Default {
-			keepAliveIntervalEnv = keepAliveIntervalEnv + config.Default + k
-		}
-		keepAliveInterval, err := time.ParseDuration(env.Get(keepAliveIntervalEnv,
-			kv.Get(target.MqttKeepAliveInterval)))
-		if err != nil {
-			return nil, err
-		}
-
-		queueLimitEnv := target.EnvMQTTQueueLimit
-		if k != config.Default {
-			queueLimitEnv = queueLimitEnv + config.Default + k
-		}
-		queueLimit, err := strconv.ParseUint(env.Get(queueLimitEnv, kv.Get(target.MqttQueueLimit)), 10, 64)
-		if err != nil {
-			return nil, err
-		}
-
-		qosEnv := target.EnvMQTTQoS
-		if k != config.Default {
-			qosEnv = qosEnv + config.Default + k
-		}
-
-		// Parse uint8 value
-		qos, err := strconv.ParseUint(env.Get(qosEnv, kv.Get(target.MqttQoS)), 10, 8)
-		if err != nil {
-			return nil, err
-		}
-
-		topicEnv := target.EnvMQTTTopic
-		if k != config.Default {
-			topicEnv = topicEnv + config.Default + k
-		}
-
-		usernameEnv := target.EnvMQTTUsername
-		if k != config.Default {
-			usernameEnv = usernameEnv + config.Default + k
-		}
-
-		passwordEnv := target.EnvMQTTPassword
-		if k != config.Default {
-			passwordEnv = passwordEnv + config.Default + k
-		}
-
-		queueDirEnv := target.EnvMQTTQueueDir
-		if k != config.Default {
-			queueDirEnv = queueDirEnv + config.Default + k
-		}
-
-		mqttArgs := target.MQTTArgs{
-			Enable:               enabled,
-			Broker:               *brokerURL,
-			Topic:                env.Get(topicEnv, kv.Get(target.MqttTopic)),
-			QoS:                  byte(qos),
-			User:                 env.Get(usernameEnv, kv.Get(target.MqttUsername)),
-			Password:             env.Get(passwordEnv, kv.Get(target.MqttPassword)),
-			MaxReconnectInterval: reconnectInterval,
-			KeepAlive:            keepAliveInterval,
-			RootCAs:              rootCAs,
-			QueueDir:             env.Get(queueDirEnv, kv.Get(target.MqttQueueDir)),
-			QueueLimit:           queueLimit,
-		}
-
-		if err = mqttArgs.Validate(); err != nil {
-			return nil, err
-		}
-		mqttTargets[k] = mqttArgs
-	}
-	return mqttTargets, nil
 }
 
 // DefaultMySQLKVS - default KV for MySQL
