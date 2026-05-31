@@ -3,7 +3,7 @@ module github.com/minio/minio
 go 1.26
 
 require (
-	git.apache.org/thrift.git v0.13.0
+	git.apache.org/thrift.git v0.14.2
 	github.com/VividCortex/ewma v1.2.0
 	github.com/alecthomas/participle v0.7.1
 	github.com/bcicen/jstream v1.0.1
