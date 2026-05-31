@@ -483,7 +483,7 @@ func TestGetMinioMode(t *testing.T) {
 	globalIsDistErasure, globalIsErasure = false, false
 	testMinioMode(globalMinioModeFS)
 
-	globalIsGateway, globalGatewayName = true, "azure"
+	globalIsGateway, globalGatewayName = true, "s3"
 	testMinioMode(globalMinioModeGatewayPrefix + globalGatewayName)
 
 }

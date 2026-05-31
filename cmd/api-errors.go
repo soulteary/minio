@@ -24,8 +24,6 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/Azure/azure-storage-blob-go/azblob"
-
 	minio "github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/tags"
 	"github.com/minio/minio/cmd/config/dns"
@@ -2144,12 +2142,6 @@ func toAPIError(ctx context.Context, err error) APIError {
 					Description:    e.Message,
 					HTTPStatusCode: http.StatusNotImplemented,
 				}
-			}
-		case azblob.StorageError:
-			apiErr = APIError{
-				Code:           string(e.ServiceCode()),
-				Description:    e.Error(),
-				HTTPStatusCode: e.Response().StatusCode,
 			}
 			// Add more Gateway SDKs here if any in future.
 		default:
