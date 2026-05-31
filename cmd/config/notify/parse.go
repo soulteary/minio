@@ -111,11 +111,6 @@ func FetchRegisteredTargets(ctx context.Context, cfg config.Config, transport *h
 		return nil, err
 	}
 
-	amqpTargets, err := GetNotifyAMQP(cfg[config.NotifyAMQPSubSys])
-	if err != nil {
-		return nil, err
-	}
-
 	esTargets, err := GetNotifyES(cfg[config.NotifyESSubSys], transport)
 	if err != nil {
 		return nil, err
@@ -154,27 +149,6 @@ func FetchRegisteredTargets(ctx context.Context, cfg config.Config, transport *h
 	webhookTargets, err := GetNotifyWebhook(cfg[config.NotifyWebhookSubSys], transport)
 	if err != nil {
 		return nil, err
-	}
-
-	for id, args := range amqpTargets {
-		if !args.Enable {
-			continue
-		}
-		newTarget, err := target.NewAMQPTarget(id, args, ctx.Done(), logger.LogOnceIf, test)
-		if err != nil {
-			targetsOffline = true
-			if returnOnTargetError {
-				return nil, err
-			}
-			_ = newTarget.Close()
-		}
-
-		if err = targetList.Add(newTarget); err != nil {
-			logger.LogIf(context.Background(), err)
-			if returnOnTargetError {
-				return nil, err
-			}
-		}
 	}
 
 	for id, args := range esTargets {
@@ -348,7 +322,6 @@ func FetchRegisteredTargets(ctx context.Context, cfg config.Config, transport *h
 // DefaultNotificationKVS - default notification list of kvs.
 var (
 	DefaultNotificationKVS = map[string]config.KVS{
-		config.NotifyAMQPSubSys:     DefaultAMQPKVS,
 		config.NotifyMQTTSubSys:     DefaultMQTTKVS,
 		config.NotifyMySQLSubSys:    DefaultMySQLKVS,
 		config.NotifyNATSSubSys:     DefaultNATSKVS,
@@ -1422,165 +1395,4 @@ func GetNotifyES(esKVS map[string]config.KVS, transport *http.Transport) (map[st
 		esTargets[k] = esArgs
 	}
 	return esTargets, nil
-}
-
-// DefaultAMQPKVS - default KV for AMQP config
-var (
-	DefaultAMQPKVS = config.KVS{
-		config.KV{
-			Key:   config.Enable,
-			Value: config.EnableOff,
-		},
-		config.KV{
-			Key:   target.AmqpURL,
-			Value: "",
-		},
-		config.KV{
-			Key:   target.AmqpExchange,
-			Value: "",
-		},
-		config.KV{
-			Key:   target.AmqpExchangeType,
-			Value: "",
-		},
-		config.KV{
-			Key:   target.AmqpRoutingKey,
-			Value: "",
-		},
-		config.KV{
-			Key:   target.AmqpMandatory,
-			Value: config.EnableOff,
-		},
-		config.KV{
-			Key:   target.AmqpDurable,
-			Value: config.EnableOff,
-		},
-		config.KV{
-			Key:   target.AmqpNoWait,
-			Value: config.EnableOff,
-		},
-		config.KV{
-			Key:   target.AmqpInternal,
-			Value: config.EnableOff,
-		},
-		config.KV{
-			Key:   target.AmqpAutoDeleted,
-			Value: config.EnableOff,
-		},
-		config.KV{
-			Key:   target.AmqpDeliveryMode,
-			Value: "0",
-		},
-		config.KV{
-			Key:   target.AmqpQueueLimit,
-			Value: "0",
-		},
-		config.KV{
-			Key:   target.AmqpQueueDir,
-			Value: "",
-		},
-	}
-)
-
-// GetNotifyAMQP - returns a map of registered notification 'amqp' targets
-func GetNotifyAMQP(amqpKVS map[string]config.KVS) (map[string]target.AMQPArgs, error) {
-	amqpTargets := make(map[string]target.AMQPArgs)
-	for k, kv := range mergeTargets(amqpKVS, target.EnvAMQPEnable, DefaultAMQPKVS) {
-		enableEnv := target.EnvAMQPEnable
-		if k != config.Default {
-			enableEnv = enableEnv + config.Default + k
-		}
-		enabled, err := config.ParseBool(env.Get(enableEnv, kv.Get(config.Enable)))
-		if err != nil {
-			return nil, err
-		}
-		if !enabled {
-			continue
-		}
-		urlEnv := target.EnvAMQPURL
-		if k != config.Default {
-			urlEnv = urlEnv + config.Default + k
-		}
-		url, err := xnet.ParseURL(env.Get(urlEnv, kv.Get(target.AmqpURL)))
-		if err != nil {
-			return nil, err
-		}
-		deliveryModeEnv := target.EnvAMQPDeliveryMode
-		if k != config.Default {
-			deliveryModeEnv = deliveryModeEnv + config.Default + k
-		}
-		deliveryMode, err := strconv.Atoi(env.Get(deliveryModeEnv, kv.Get(target.AmqpDeliveryMode)))
-		if err != nil {
-			return nil, err
-		}
-		exchangeEnv := target.EnvAMQPExchange
-		if k != config.Default {
-			exchangeEnv = exchangeEnv + config.Default + k
-		}
-		routingKeyEnv := target.EnvAMQPRoutingKey
-		if k != config.Default {
-			routingKeyEnv = routingKeyEnv + config.Default + k
-		}
-		exchangeTypeEnv := target.EnvAMQPExchangeType
-		if k != config.Default {
-			exchangeTypeEnv = exchangeTypeEnv + config.Default + k
-		}
-		mandatoryEnv := target.EnvAMQPMandatory
-		if k != config.Default {
-			mandatoryEnv = mandatoryEnv + config.Default + k
-		}
-		immediateEnv := target.EnvAMQPImmediate
-		if k != config.Default {
-			immediateEnv = immediateEnv + config.Default + k
-		}
-		durableEnv := target.EnvAMQPDurable
-		if k != config.Default {
-			durableEnv = durableEnv + config.Default + k
-		}
-		internalEnv := target.EnvAMQPInternal
-		if k != config.Default {
-			internalEnv = internalEnv + config.Default + k
-		}
-		noWaitEnv := target.EnvAMQPNoWait
-		if k != config.Default {
-			noWaitEnv = noWaitEnv + config.Default + k
-		}
-		autoDeletedEnv := target.EnvAMQPAutoDeleted
-		if k != config.Default {
-			autoDeletedEnv = autoDeletedEnv + config.Default + k
-		}
-		queueDirEnv := target.EnvAMQPQueueDir
-		if k != config.Default {
-			queueDirEnv = queueDirEnv + config.Default + k
-		}
-		queueLimitEnv := target.EnvAMQPQueueLimit
-		if k != config.Default {
-			queueLimitEnv = queueLimitEnv + config.Default + k
-		}
-		queueLimit, err := strconv.ParseUint(env.Get(queueLimitEnv, kv.Get(target.AmqpQueueLimit)), 10, 64)
-		if err != nil {
-			return nil, err
-		}
-		amqpArgs := target.AMQPArgs{
-			Enable:       enabled,
-			URL:          *url,
-			Exchange:     env.Get(exchangeEnv, kv.Get(target.AmqpExchange)),
-			RoutingKey:   env.Get(routingKeyEnv, kv.Get(target.AmqpRoutingKey)),
-			ExchangeType: env.Get(exchangeTypeEnv, kv.Get(target.AmqpExchangeType)),
-			DeliveryMode: uint8(deliveryMode),
-			Mandatory:    env.Get(mandatoryEnv, kv.Get(target.AmqpMandatory)) == config.EnableOn,
-			Immediate:    env.Get(immediateEnv, kv.Get(target.AmqpImmediate)) == config.EnableOn,
-			Durable:      env.Get(durableEnv, kv.Get(target.AmqpDurable)) == config.EnableOn,
-			Internal:     env.Get(internalEnv, kv.Get(target.AmqpInternal)) == config.EnableOn,
-			NoWait:       env.Get(noWaitEnv, kv.Get(target.AmqpNoWait)) == config.EnableOn,
-			AutoDeleted:  env.Get(autoDeletedEnv, kv.Get(target.AmqpAutoDeleted)) == config.EnableOn,
-			QueueDir:     env.Get(queueDirEnv, kv.Get(target.AmqpQueueDir)),
-			QueueLimit:   queueLimit,
-		}
-		if err = amqpArgs.Validate(); err != nil {
-			return nil, err
-		}
-		amqpTargets[k] = amqpArgs
-	}
-	return amqpTargets, nil
 }

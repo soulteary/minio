@@ -161,20 +161,6 @@ type loggerV5 struct {
 		Addr   string `json:"address"`
 		Level  string `json:"level"`
 	} `json:"syslog"`
-	AMQP struct {
-		Enable       bool   `json:"enable"`
-		Level        string `json:"level"`
-		URL          string `json:"url"`
-		Exchange     string `json:"exchange"`
-		RoutingKey   string `json:"routingKey"`
-		ExchangeType string `json:"exchangeType"`
-		Mandatory    bool   `json:"mandatory"`
-		Immediate    bool   `json:"immediate"`
-		Durable      bool   `json:"durable"`
-		Internal     bool   `json:"internal"`
-		NoWait       bool   `json:"noWait"`
-		AutoDeleted  bool   `json:"autoDeleted"`
-	} `json:"amqp"`
 	ElasticSearch struct {
 		Enable bool   `json:"enable"`
 		Level  string `json:"level"`
@@ -238,7 +224,6 @@ type configV6 struct {
 // Notifier represents collection of supported notification queues in version
 // 1 without NATS streaming.
 type notifierV1 struct {
-	AMQP          map[string]target.AMQPArgs          `json:"amqp"`
 	NATS          map[string]natsNotifyV1             `json:"nats"`
 	ElasticSearch map[string]target.ElasticsearchArgs `json:"elasticsearch"`
 	Redis         map[string]target.RedisArgs         `json:"redis"`
@@ -248,7 +233,6 @@ type notifierV1 struct {
 // Notifier represents collection of supported notification queues in version 2
 // with NATS streaming but without webhook.
 type notifierV2 struct {
-	AMQP          map[string]target.AMQPArgs          `json:"amqp"`
 	NATS          map[string]target.NATSArgs          `json:"nats"`
 	ElasticSearch map[string]target.ElasticsearchArgs `json:"elasticsearch"`
 	Redis         map[string]target.RedisArgs         `json:"redis"`
@@ -370,7 +354,6 @@ type serverConfigV12 struct {
 }
 
 type notifierV3 struct {
-	AMQP          map[string]target.AMQPArgs          `json:"amqp"`
 	Elasticsearch map[string]target.ElasticsearchArgs `json:"elasticsearch"`
 	MQTT          map[string]target.MQTTArgs          `json:"mqtt"`
 	MySQL         map[string]target.MySQLArgs         `json:"mysql"`
@@ -488,8 +471,7 @@ type serverConfigV17 struct {
 }
 
 // serverConfigV18 server configuration version '18' which is like
-// version '17' except it adds support for "deliveryMode" parameter in
-// the AMQP notification target.
+// version '17'.
 type serverConfigV18 struct {
 	sync.RWMutex
 	Version string `json:"version"`

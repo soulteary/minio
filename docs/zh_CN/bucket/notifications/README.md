@@ -14,8 +14,8 @@
 
 | 支持的通知目标    |                             |                                 |
 | :-------------------------------- | --------------------------- | ------------------------------- |
-| [`AMQP`](#AMQP)                   | [`Redis`](#Redis)           | [`MySQL`](#MySQL)               |
-| [`MQTT`](#MQTT)                   | [`NATS`](#NATS)             | [`NSQ`](#NSQ)                     |
+| [`MQTT`](#MQTT)                   | [`Redis`](#Redis)           | [`MySQL`](#MySQL)               |
+| [`NATS`](#NATS)                   | [`NSQ`](#NSQ)               |                                 |
 | [`Elasticsearch`](#Elasticsearch) | [`PostgreSQL`](#PostgreSQL) | [`Webhooks`](#webhooks)         |
 
 ## 前提条件
@@ -26,7 +26,6 @@
 ```
 $ mc admin config get myminio | grep notify
 notify_webhook        publish bucket notifications to webhook endpoints
-notify_amqp           publish bucket notifications to AMQP endpoints
 notify_mqtt           publish bucket notifications to MQTT endpoints
 notify_nats           publish bucket notifications to NATS endpoints
 notify_nsq            publish bucket notifications to NSQ endpoints
@@ -40,142 +39,6 @@ notify_redis          publish bucket notifications to Redis datastores
 > - '\*' 结尾的参数是必填的.
 > - '\*' 结尾的值，是参数的的默认值.
 > - 当通过环境变量配置的时候, `:name` 可以通过这样 `MINIO_NOTIFY_WEBHOOK_ENABLE_<name>` 的格式指定.
-
-<a name="AMQP"></a>
-## 使用AMQP发布MinIO事件
-
-从[这里](https://www.rabbitmq.com/)下载安装RabbitMQ。
-
-### 第一步: 将AMQP endpoint添加到MinIO
-
-AMQP的配置信息位于`notify_amqp`这个顶级的key下。在这里为你的AMQP实例创建配置信息键值对。key是你的AMQP endpoint的名称，value是下面表格中列列的键值对集合。
-
-```
-KEY:
-notify_amqp[:name]  发布存储桶通知到AMQP endpoints
-
-ARGS:
-url*           (url)       AMQP server endpoint, 例如. `amqp://myuser:mypassword@localhost:5672`
-exchange       (string)    AMQP exchange名称
-exchange_type  (string)    AMQP exchange类型
-routing_key    (string)    发布用的routing key
-mandatory      (on|off)    当设置为'off'的时候,忽略未发送的消息(默默的)，默认是 'on'
-durable        (on|off)    当设置为'on'的时候，表示持久化队列，broker重启后也会存在, 默认是 'off'
-no_wait        (on|off)    当设置为'on'的时候，传递非阻塞的消息， 默认是 'off'
-internal       (on|off)    设置为'on'表示exchange是rabbitmq内部使用
-auto_deleted   (on|off)    当没有使用者时，设置为'on'时自动删除队列
-delivery_mode  (number)    '1'代表非持久队列，'2'代表持久队列
-queue_dir      (path)      未发送消息的暂存目录 例如 '/home/events'
-queue_limit    (number)    未发送消息的最大限制, 默认是'100000'
-comment        (sentence)  可选的注释
-```
-
-或者通过环境变量(配置说明参考上面)
-
-```
-KEY:
-notify_amqp[:name]  publish bucket notifications to AMQP endpoints
-
-ARGS:
-MINIO_NOTIFY_AMQP_ENABLE*        (on|off)    enable notify_amqp target, default is 'off'
-MINIO_NOTIFY_AMQP_URL*           (url)       AMQP server endpoint e.g. `amqp://myuser:mypassword@localhost:5672`
-MINIO_NOTIFY_AMQP_EXCHANGE       (string)    name of the AMQP exchange
-MINIO_NOTIFY_AMQP_EXCHANGE_TYPE  (string)    AMQP exchange type
-MINIO_NOTIFY_AMQP_ROUTING_KEY    (string)    routing key for publishing
-MINIO_NOTIFY_AMQP_MANDATORY      (on|off)    quietly ignore undelivered messages when set to 'off', default is 'on'
-MINIO_NOTIFY_AMQP_DURABLE        (on|off)    persist queue across broker restarts when set to 'on', default is 'off'
-MINIO_NOTIFY_AMQP_NO_WAIT        (on|off)    non-blocking message delivery when set to 'on', default is 'off'
-MINIO_NOTIFY_AMQP_INTERNAL       (on|off)    set to 'on' for exchange to be not used directly by publishers, but only when bound to other exchanges
-MINIO_NOTIFY_AMQP_AUTO_DELETED   (on|off)    auto delete queue when set to 'on', when there are no consumers
-MINIO_NOTIFY_AMQP_DELIVERY_MODE  (number)    set to '1' for non-persistent or '2' for persistent queue
-MINIO_NOTIFY_AMQP_QUEUE_DIR      (path)      staging dir for undelivered messages e.g. '/home/events'
-MINIO_NOTIFY_AMQP_QUEUE_LIMIT    (number)    maximum limit for undelivered messages, defaults to '100000'
-MINIO_NOTIFY_AMQP_COMMENT        (sentence)  optionally add a comment to this setting
-```
-
-MinIO支持持久事件存储。持久存储将在AMQP broker离线时备份事件，并在broker恢复在线时重播事件。事件存储的目录可以通过`queue_dir`字段设置，存储的最大限制可以通过`queue_limit`设置。例如, `queue_dir`可以设置为`/home/events`, 并且`queue_limit`可以设置为`1000`. 默认情况下 `queue_limit` 是100000.
-
-更新配置前, 可以使用`mc admin config get notify_amqp`命令获取`notify_amqp`的当前配置.
-
-```sh
-$ mc admin config get myminio/ notify_amqp
-notify_amqp:1 delivery_mode="0" exchange_type="" no_wait="off" queue_dir="" queue_limit="0"  url="" auto_deleted="off" durable="off" exchange="" internal="off" mandatory="off" routing_key=""
-```
-
-使用`mc admin config set`命令更新配置后，重启MinIO Server让配置生效。 如果一切顺利，MinIO Server会在启动时输出一行信息，类似 `SQS ARNs: arn:minio:sqs::1:amqp`。
-
-RabbitMQ的示例配置如下所示：
-
-```sh
-$ mc admin config set myminio/ notify_amqp:1 exchange="bucketevents" exchange_type="fanout" mandatory="false" no_wait="false"  url="amqp://myuser:mypassword@localhost:5672" auto_deleted="false" delivery_mode="0" durable="false" internal="false" routing_key="bucketlogs"
-```
-
-MinIO支持[RabbitMQ](https://www.rabbitmq.com/)中所有的exchange类型，这次我们采用  `fanout` exchange。
-
-请注意, 根据你的需要，你可以添加任意多个AMQP server endpoint，只要提供AMQP实例的标识符（如上例中的“ 1”）和每个实例配置参数的信息即可。
-
-### 第二步: 使用MinIO客户端启用bucket通知
-
-如果一个JPEG图片上传到`myminio` server里的`images` 存储桶或者从桶中删除，一个存储桶事件通知就会被触发。 这里ARN值是`arn:minio:sqs:us-east-1:1:amqp`，想了解更多关于ARN的信息，请参考[AWS ARN](http://docs.aws.amazon.com/general/latest/gr/aws-arns-and-namespaces.html) 文档.
-
-```
-mc mb myminio/images
-mc event add myminio/images arn:minio:sqs::1:amqp --suffix .jpg
-mc event list myminio/images
-arn:minio:sqs::1:amqp s3:ObjectCreated:*,s3:ObjectRemoved:* Filter: suffix=”.jpg”
-```
-
-### 第三步:在RabbitMQ上进行验证
-
-下面将要出场的python程序会在exchange `bucketevents` 上等待队列,并在控制台中输出事件通知。我们使用的是[Pika Python Client](https://www.rabbitmq.com/tutorials/tutorial-three-python.html) 来实现此功能。
-
-```py
-#!/usr/bin/env python
-import pika
-
-connection = pika.BlockingConnection(pika.ConnectionParameters(
-        host='localhost'))
-channel = connection.channel()
-
-channel.exchange_declare(exchange='bucketevents',
-                         exchange_type='fanout')
-
-result = channel.queue_declare(exclusive=False)
-queue_name = result.method.queue
-
-channel.queue_bind(exchange='bucketevents',
-                   queue=queue_name)
-
-print(' [*] Waiting for logs. To exit press CTRL+C')
-
-def callback(ch, method, properties, body):
-    print(" [x] %r" % body)
-
-channel.basic_consume(callback,
-                      queue=queue_name,
-                      no_ack=False)
-
-channel.start_consuming()
-```
-
-执行示例中的python程序来观察RabbitMQ事件。
-
-```py
-python rabbit.py
-```
-
-另开一个terminal终端并上传一张JPEG图片到``images``存储桶。
-
-```
-mc cp myphoto.jpg myminio/images
-```
-
-一旦上传完毕，你应该会通过RabbitMQ收到下面的事件通知。
-
-```py
-python rabbit.py
-‘{“Records”:[{“eventVersion”:”2.0",”eventSource”:”aws:s3",”awsRegion”:”us-east-1",”eventTime”:”2016–09–08T22:34:38.226Z”,”eventName”:”s3:ObjectCreated:Put”,”userIdentity”:{“principalId”:”minio”},”requestParameters”:{“sourceIPAddress”:”10.1.10.150:44576"},”responseElements”:{},”s3":{“s3SchemaVersion”:”1.0",”configurationId”:”Config”,”bucket”:{“name”:”images”,”ownerIdentity”:{“principalId”:”minio”},”arn”:”arn:aws:s3:::images”},”object”:{“key”:”myphoto.jpg”,”size”:200436,”sequencer”:”147279EAF9F40933"}}}],”level”:”info”,”msg”:””,”time”:”2016–09–08T15:34:38–07:00"}\n
-```
 
 <a name="MQTT"></a>
 ## 使用MQTT发布MinIO事件
@@ -252,7 +115,7 @@ MinIO支持任何支持MQTT 3.1或3.1.1的MQTT服务器，并且可以使用`tcp
 mc mb myminio/images
 mc event add  myminio/images arn:minio:sqs::1:mqtt --suffix .jpg
 mc event list myminio/images
-arn:minio:sqs::1:amqp s3:ObjectCreated:*,s3:ObjectRemoved:* Filter: suffix=”.jpg”
+arn:minio:sqs::1:mqtt s3:ObjectCreated:*,s3:ObjectRemoved:* Filter: suffix=”.jpg”
 ```
 
 ### 第三步：验证MQTT

@@ -203,7 +203,6 @@ MinIO支持如下列表中的通知。要配置单个目标，请参阅[此处](
 
 ```
 notify_webhook        发布 bucket 通知到 webhook endpoints
-notify_amqp           发布 bucket 通知到 AMQP endpoints
 notify_mqtt           发布 bucket 通知到 MQTT endpoints
 notify_nats           发布 bucket 通知到 NATS endpoints
 notify_nsq            发布 bucket 通知到 NSQ endpoints

@@ -90,7 +90,6 @@ const (
 	NotifyNATSSubSys     = "notify_nats"
 	NotifyNSQSubSys      = "notify_nsq"
 	NotifyESSubSys       = "notify_elasticsearch"
-	NotifyAMQPSubSys     = "notify_amqp"
 	NotifyPostgresSubSys = "notify_postgres"
 	NotifyRedisSubSys    = "notify_redis"
 	NotifyWebhookSubSys  = "notify_webhook"
@@ -116,7 +115,6 @@ var SubSystems = set.CreateStringSet(
 	IdentityOpenIDSubSys,
 	ScannerSubSys,
 	HealSubSys,
-	NotifyAMQPSubSys,
 	NotifyESSubSys,
 	NotifyMQTTSubSys,
 	NotifyMySQLSubSys,

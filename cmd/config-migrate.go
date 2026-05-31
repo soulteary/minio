@@ -382,7 +382,6 @@ func migrateV4ToV5() error {
 	srvConfig.Logger.Console = cv4.Logger.Console
 	srvConfig.Logger.File = cv4.Logger.File
 	srvConfig.Logger.Syslog = cv4.Logger.Syslog
-	srvConfig.Logger.AMQP.Enable = false
 	srvConfig.Logger.ElasticSearch.Enable = false
 	srvConfig.Logger.Redis.Enable = false
 
@@ -424,26 +423,6 @@ func migrateV5ToV6() error {
 	srvConfig.Logger.File = cv5.Logger.File
 	srvConfig.Logger.Syslog = cv5.Logger.Syslog
 
-	if cv5.Logger.AMQP.URL != "" {
-		var url *xnet.URL
-		if url, err = xnet.ParseURL(cv5.Logger.AMQP.URL); err != nil {
-			return err
-		}
-		srvConfig.Notify.AMQP = map[string]target.AMQPArgs{
-			"1": {
-				Enable:      cv5.Logger.AMQP.Enable,
-				URL:         *url,
-				Exchange:    cv5.Logger.AMQP.Exchange,
-				RoutingKey:  cv5.Logger.AMQP.RoutingKey,
-				Mandatory:   cv5.Logger.AMQP.Mandatory,
-				Immediate:   cv5.Logger.AMQP.Immediate,
-				Durable:     cv5.Logger.AMQP.Durable,
-				Internal:    cv5.Logger.AMQP.Internal,
-				NoWait:      cv5.Logger.AMQP.NoWait,
-				AutoDeleted: cv5.Logger.AMQP.AutoDeleted,
-			},
-		}
-	}
 
 	if cv5.Logger.ElasticSearch.URL != "" {
 		var url *xnet.URL
@@ -512,14 +491,8 @@ func migrateV6ToV7() error {
 	srvConfig.Logger.Console = cv6.Logger.Console
 	srvConfig.Logger.File = cv6.Logger.File
 	srvConfig.Logger.Syslog = cv6.Logger.Syslog
-	srvConfig.Notify.AMQP = make(map[string]target.AMQPArgs)
 	srvConfig.Notify.ElasticSearch = make(map[string]target.ElasticsearchArgs)
 	srvConfig.Notify.Redis = make(map[string]target.RedisArgs)
-	if len(cv6.Notify.AMQP) == 0 {
-		srvConfig.Notify.AMQP["1"] = target.AMQPArgs{}
-	} else {
-		srvConfig.Notify.AMQP = cv6.Notify.AMQP
-	}
 	if len(cv6.Notify.ElasticSearch) == 0 {
 		srvConfig.Notify.ElasticSearch["1"] = target.ElasticsearchArgs{}
 	} else {
@@ -568,16 +541,10 @@ func migrateV7ToV8() error {
 	srvConfig.Logger.Console = cv7.Logger.Console
 	srvConfig.Logger.File = cv7.Logger.File
 	srvConfig.Logger.Syslog = cv7.Logger.Syslog
-	srvConfig.Notify.AMQP = make(map[string]target.AMQPArgs)
 	srvConfig.Notify.NATS = make(map[string]natsNotifyV1)
 	srvConfig.Notify.ElasticSearch = make(map[string]target.ElasticsearchArgs)
 	srvConfig.Notify.Redis = make(map[string]target.RedisArgs)
 	srvConfig.Notify.PostgreSQL = make(map[string]target.PostgreSQLArgs)
-	if len(cv7.Notify.AMQP) == 0 {
-		srvConfig.Notify.AMQP["1"] = target.AMQPArgs{}
-	} else {
-		srvConfig.Notify.AMQP = cv7.Notify.AMQP
-	}
 	if len(cv7.Notify.NATS) == 0 {
 		srvConfig.Notify.NATS["1"] = natsNotifyV1{}
 	} else {
@@ -633,12 +600,6 @@ func migrateV8ToV9() error {
 	srvConfig.Logger.Syslog = cv8.Logger.Syslog
 
 	// check and set notifiers config
-	if len(cv8.Notify.AMQP) == 0 {
-		srvConfig.Notify.AMQP = make(map[string]target.AMQPArgs)
-		srvConfig.Notify.AMQP["1"] = target.AMQPArgs{}
-	} else {
-		srvConfig.Notify.AMQP = cv8.Notify.AMQP
-	}
 	if len(cv8.Notify.NATS) == 0 {
 		srvConfig.Notify.NATS = make(map[string]natsNotifyV1)
 		srvConfig.Notify.NATS["1"] = natsNotifyV1{}
@@ -701,12 +662,6 @@ func migrateV9ToV10() error {
 	srvConfig.Logger.File = cv9.Logger.File
 
 	// check and set notifiers config
-	if len(cv9.Notify.AMQP) == 0 {
-		srvConfig.Notify.AMQP = make(map[string]target.AMQPArgs)
-		srvConfig.Notify.AMQP["1"] = target.AMQPArgs{}
-	} else {
-		srvConfig.Notify.AMQP = cv9.Notify.AMQP
-	}
 	if len(cv9.Notify.NATS) == 0 {
 		srvConfig.Notify.NATS = make(map[string]natsNotifyV1)
 		srvConfig.Notify.NATS["1"] = natsNotifyV1{}
@@ -768,12 +723,6 @@ func migrateV10ToV11() error {
 	srvConfig.Logger.File = cv10.Logger.File
 
 	// check and set notifiers config
-	if len(cv10.Notify.AMQP) == 0 {
-		srvConfig.Notify.AMQP = make(map[string]target.AMQPArgs)
-		srvConfig.Notify.AMQP["1"] = target.AMQPArgs{}
-	} else {
-		srvConfig.Notify.AMQP = cv10.Notify.AMQP
-	}
 	if len(cv10.Notify.NATS) == 0 {
 		srvConfig.Notify.NATS = make(map[string]natsNotifyV1)
 		srvConfig.Notify.NATS["1"] = natsNotifyV1{}
@@ -835,12 +784,6 @@ func migrateV11ToV12() error {
 	srvConfig.Logger.File = cv11.Logger.File
 
 	// check and set notifiers config
-	if len(cv11.Notify.AMQP) == 0 {
-		srvConfig.Notify.AMQP = make(map[string]target.AMQPArgs)
-		srvConfig.Notify.AMQP["1"] = target.AMQPArgs{}
-	} else {
-		srvConfig.Notify.AMQP = cv11.Notify.AMQP
-	}
 	if len(cv11.Notify.ElasticSearch) == 0 {
 		srvConfig.Notify.ElasticSearch = make(map[string]target.ElasticsearchArgs)
 		srvConfig.Notify.ElasticSearch["1"] = target.ElasticsearchArgs{}
@@ -929,12 +872,6 @@ func migrateV12ToV13() error {
 	srvConfig.Logger.File = cv12.Logger.File
 
 	// check and set notifiers config
-	if len(cv12.Notify.AMQP) == 0 {
-		srvConfig.Notify.AMQP = make(map[string]target.AMQPArgs)
-		srvConfig.Notify.AMQP["1"] = target.AMQPArgs{}
-	} else {
-		srvConfig.Notify.AMQP = cv12.Notify.AMQP
-	}
 	if len(cv12.Notify.ElasticSearch) == 0 {
 		srvConfig.Notify.Elasticsearch = make(map[string]target.ElasticsearchArgs)
 		srvConfig.Notify.Elasticsearch["1"] = target.ElasticsearchArgs{}
@@ -1003,12 +940,6 @@ func migrateV13ToV14() error {
 	srvConfig.Logger.File = cv13.Logger.File
 
 	// check and set notifiers config
-	if len(cv13.Notify.AMQP) == 0 {
-		srvConfig.Notify.AMQP = make(map[string]target.AMQPArgs)
-		srvConfig.Notify.AMQP["1"] = target.AMQPArgs{}
-	} else {
-		srvConfig.Notify.AMQP = cv13.Notify.AMQP
-	}
 	if len(cv13.Notify.Elasticsearch) == 0 {
 		srvConfig.Notify.Elasticsearch = make(map[string]target.ElasticsearchArgs)
 		srvConfig.Notify.Elasticsearch["1"] = target.ElasticsearchArgs{}
@@ -1082,12 +1013,6 @@ func migrateV14ToV15() error {
 	srvConfig.Logger.File = cv14.Logger.File
 
 	// check and set notifiers config
-	if len(cv14.Notify.AMQP) == 0 {
-		srvConfig.Notify.AMQP = make(map[string]target.AMQPArgs)
-		srvConfig.Notify.AMQP["1"] = target.AMQPArgs{}
-	} else {
-		srvConfig.Notify.AMQP = cv14.Notify.AMQP
-	}
 	if len(cv14.Notify.Elasticsearch) == 0 {
 		srvConfig.Notify.Elasticsearch = make(map[string]target.ElasticsearchArgs)
 		srvConfig.Notify.Elasticsearch["1"] = target.ElasticsearchArgs{}
@@ -1164,12 +1089,6 @@ func migrateV15ToV16() error {
 	}
 
 	// check and set notifiers config
-	if len(cv15.Notify.AMQP) == 0 {
-		srvConfig.Notify.AMQP = make(map[string]target.AMQPArgs)
-		srvConfig.Notify.AMQP["1"] = target.AMQPArgs{}
-	} else {
-		srvConfig.Notify.AMQP = cv15.Notify.AMQP
-	}
 	if len(cv15.Notify.Elasticsearch) == 0 {
 		srvConfig.Notify.Elasticsearch = make(map[string]target.ElasticsearchArgs)
 		srvConfig.Notify.Elasticsearch["1"] = target.ElasticsearchArgs{}
@@ -1251,12 +1170,6 @@ func migrateV16ToV17() error {
 	srvConfig.Logger.File = cv16.Logger.File
 
 	// check and set notifiers config
-	if len(cv16.Notify.AMQP) == 0 {
-		srvConfig.Notify.AMQP = make(map[string]target.AMQPArgs)
-		srvConfig.Notify.AMQP["1"] = target.AMQPArgs{}
-	} else {
-		srvConfig.Notify.AMQP = cv16.Notify.AMQP
-	}
 	if len(cv16.Notify.Elasticsearch) == 0 {
 		srvConfig.Notify.Elasticsearch = make(map[string]target.ElasticsearchArgs)
 		srvConfig.Notify.Elasticsearch["1"] = target.ElasticsearchArgs{}
@@ -1333,8 +1246,7 @@ func migrateV16ToV17() error {
 	return nil
 }
 
-// Version '17' to '18' migration. Adds "deliveryMode" configuration
-// parameter for AMQP notification target
+// Version '17' to '18' migration.
 func migrateV17ToV18() error {
 	configFile := getConfigFile()
 
@@ -1366,15 +1278,6 @@ func migrateV17ToV18() error {
 	srvConfig.Logger.File = cv17.Logger.File
 
 	// check and set notifiers config
-	if len(cv17.Notify.AMQP) == 0 {
-		srvConfig.Notify.AMQP = make(map[string]target.AMQPArgs)
-		srvConfig.Notify.AMQP["1"] = target.AMQPArgs{}
-	} else {
-		// New deliveryMode parameter is added for AMQP,
-		// default value is already 0, so nothing to
-		// explicitly migrate here.
-		srvConfig.Notify.AMQP = cv17.Notify.AMQP
-	}
 	if len(cv17.Notify.Elasticsearch) == 0 {
 		srvConfig.Notify.Elasticsearch = make(map[string]target.ElasticsearchArgs)
 		srvConfig.Notify.Elasticsearch["1"] = target.ElasticsearchArgs{
@@ -1462,15 +1365,6 @@ func migrateV18ToV19() error {
 	srvConfig.Logger.File = cv18.Logger.File
 
 	// check and set notifiers config
-	if len(cv18.Notify.AMQP) == 0 {
-		srvConfig.Notify.AMQP = make(map[string]target.AMQPArgs)
-		srvConfig.Notify.AMQP["1"] = target.AMQPArgs{}
-	} else {
-		// New deliveryMode parameter is added for AMQP,
-		// default value is already 0, so nothing to
-		// explicitly migrate here.
-		srvConfig.Notify.AMQP = cv18.Notify.AMQP
-	}
 	if len(cv18.Notify.Elasticsearch) == 0 {
 		srvConfig.Notify.Elasticsearch = make(map[string]target.ElasticsearchArgs)
 		srvConfig.Notify.Elasticsearch["1"] = target.ElasticsearchArgs{
@@ -1561,12 +1455,6 @@ func migrateV19ToV20() error {
 	srvConfig.Logger.Console = cv19.Logger.Console
 	srvConfig.Logger.File = cv19.Logger.File
 
-	if len(cv19.Notify.AMQP) == 0 {
-		srvConfig.Notify.AMQP = make(map[string]target.AMQPArgs)
-		srvConfig.Notify.AMQP["1"] = target.AMQPArgs{}
-	} else {
-		srvConfig.Notify.AMQP = cv19.Notify.AMQP
-	}
 	if len(cv19.Notify.Elasticsearch) == 0 {
 		srvConfig.Notify.Elasticsearch = make(map[string]target.ElasticsearchArgs)
 		srvConfig.Notify.Elasticsearch["1"] = target.ElasticsearchArgs{
@@ -1656,12 +1544,6 @@ func migrateV20ToV21() error {
 		srvConfig.Region = globalMinioDefaultRegion
 	}
 
-	if len(cv20.Notify.AMQP) == 0 {
-		srvConfig.Notify.AMQP = make(map[string]target.AMQPArgs)
-		srvConfig.Notify.AMQP["1"] = target.AMQPArgs{}
-	} else {
-		srvConfig.Notify.AMQP = cv20.Notify.AMQP
-	}
 	if len(cv20.Notify.Elasticsearch) == 0 {
 		srvConfig.Notify.Elasticsearch = make(map[string]target.ElasticsearchArgs)
 		srvConfig.Notify.Elasticsearch["1"] = target.ElasticsearchArgs{
@@ -1754,12 +1636,6 @@ func migrateV21ToV22() error {
 		srvConfig.Region = globalMinioDefaultRegion
 	}
 
-	if len(cv21.Notify.AMQP) == 0 {
-		srvConfig.Notify.AMQP = make(map[string]target.AMQPArgs)
-		srvConfig.Notify.AMQP["1"] = target.AMQPArgs{}
-	} else {
-		srvConfig.Notify.AMQP = cv21.Notify.AMQP
-	}
 	if len(cv21.Notify.Elasticsearch) == 0 {
 		srvConfig.Notify.Elasticsearch = make(map[string]target.ElasticsearchArgs)
 		srvConfig.Notify.Elasticsearch["1"] = target.ElasticsearchArgs{
@@ -1852,12 +1728,6 @@ func migrateV22ToV23() error {
 		srvConfig.Region = globalMinioDefaultRegion
 	}
 
-	if len(cv22.Notify.AMQP) == 0 {
-		srvConfig.Notify.AMQP = make(map[string]target.AMQPArgs)
-		srvConfig.Notify.AMQP["1"] = target.AMQPArgs{}
-	} else {
-		srvConfig.Notify.AMQP = cv22.Notify.AMQP
-	}
 	if len(cv22.Notify.Elasticsearch) == 0 {
 		srvConfig.Notify.Elasticsearch = make(map[string]target.ElasticsearchArgs)
 		srvConfig.Notify.Elasticsearch["1"] = target.ElasticsearchArgs{
@@ -1959,12 +1829,6 @@ func migrateV23ToV24() error {
 		srvConfig.Region = globalMinioDefaultRegion
 	}
 
-	if len(cv23.Notify.AMQP) == 0 {
-		srvConfig.Notify.AMQP = make(map[string]target.AMQPArgs)
-		srvConfig.Notify.AMQP["1"] = target.AMQPArgs{}
-	} else {
-		srvConfig.Notify.AMQP = cv23.Notify.AMQP
-	}
 	if len(cv23.Notify.Elasticsearch) == 0 {
 		srvConfig.Notify.Elasticsearch = make(map[string]target.ElasticsearchArgs)
 		srvConfig.Notify.Elasticsearch["1"] = target.ElasticsearchArgs{
@@ -2066,12 +1930,6 @@ func migrateV24ToV25() error {
 		srvConfig.Region = globalMinioDefaultRegion
 	}
 
-	if len(cv24.Notify.AMQP) == 0 {
-		srvConfig.Notify.AMQP = make(map[string]target.AMQPArgs)
-		srvConfig.Notify.AMQP["1"] = target.AMQPArgs{}
-	} else {
-		srvConfig.Notify.AMQP = cv24.Notify.AMQP
-	}
 	if len(cv24.Notify.Elasticsearch) == 0 {
 		srvConfig.Notify.Elasticsearch = make(map[string]target.ElasticsearchArgs)
 		srvConfig.Notify.Elasticsearch["1"] = target.ElasticsearchArgs{
@@ -2178,12 +2036,6 @@ func migrateV25ToV26() error {
 		srvConfig.Region = globalMinioDefaultRegion
 	}
 
-	if len(cv25.Notify.AMQP) == 0 {
-		srvConfig.Notify.AMQP = make(map[string]target.AMQPArgs)
-		srvConfig.Notify.AMQP["1"] = target.AMQPArgs{}
-	} else {
-		srvConfig.Notify.AMQP = cv25.Notify.AMQP
-	}
 	if len(cv25.Notify.Elasticsearch) == 0 {
 		srvConfig.Notify.Elasticsearch = make(map[string]target.ElasticsearchArgs)
 		srvConfig.Notify.Elasticsearch["1"] = target.ElasticsearchArgs{
@@ -2651,9 +2503,6 @@ func migrateMinioSysConfigToKV(objAPI ObjectLayer) error {
 	cache.SetCacheConfig(newCfg, cfg.Cache)
 	compress.SetCompressionConfig(newCfg, cfg.Compression)
 
-	for k, args := range cfg.Notify.AMQP {
-		notify.SetNotifyAMQP(newCfg, k, args)
-	}
 	for k, args := range cfg.Notify.Elasticsearch {
 		notify.SetNotifyES(newCfg, k, args)
 	}

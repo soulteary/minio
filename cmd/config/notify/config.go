@@ -23,7 +23,6 @@ import (
 // Config - notification target configuration structure, holds
 // information about various notification targets.
 type Config struct {
-	AMQP          map[string]target.AMQPArgs          `json:"amqp"`
 	Elasticsearch map[string]target.ElasticsearchArgs `json:"elasticsearch"`
 	MQTT          map[string]target.MQTTArgs          `json:"mqtt"`
 	MySQL         map[string]target.MySQLArgs         `json:"mysql"`
@@ -43,7 +42,6 @@ func NewConfig() Config {
 	// Make sure to initialize notification targets
 	cfg := Config{
 		NSQ:           make(map[string]target.NSQArgs),
-		AMQP:          make(map[string]target.AMQPArgs),
 		MQTT:          make(map[string]target.MQTTArgs),
 		NATS:          make(map[string]target.NATSArgs),
 		Redis:         make(map[string]target.RedisArgs),
@@ -53,7 +51,6 @@ func NewConfig() Config {
 		Elasticsearch: make(map[string]target.ElasticsearchArgs),
 	}
 	cfg.NSQ[defaultTarget] = target.NSQArgs{}
-	cfg.AMQP[defaultTarget] = target.AMQPArgs{}
 	cfg.MQTT[defaultTarget] = target.MQTTArgs{}
 	cfg.NATS[defaultTarget] = target.NATSArgs{}
 	cfg.Redis[defaultTarget] = target.RedisArgs{}

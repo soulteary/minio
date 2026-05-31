@@ -39,8 +39,8 @@ Bucket events can be published to the following targets:
 
 | Supported Notification Targets    |                             |                                 |
 | :-------------------------------- | --------------------------- | ------------------------------- |
-| [`AMQP`](#AMQP)                   | [`Redis`](#Redis)           | [`MySQL`](#MySQL)               |
-| [`MQTT`](#MQTT)                   | [`NATS`](#NATS)             | [`NSQ`](#NSQ)                     |
+| [`MQTT`](#MQTT)                   | [`Redis`](#Redis)           | [`MySQL`](#MySQL)               |
+| [`NATS`](#NATS)                   | [`NSQ`](#NSQ)               |                                 |
 | [`Elasticsearch`](#Elasticsearch) | [`PostgreSQL`](#PostgreSQL) | [`Webhooks`](#webhooks)         |
 
 ## Prerequisites
@@ -51,7 +51,6 @@ Bucket events can be published to the following targets:
 ```
 $ mc admin config get myminio | grep notify
 notify_webhook        publish bucket notifications to webhook endpoints
-notify_amqp           publish bucket notifications to AMQP endpoints
 notify_mqtt           publish bucket notifications to MQTT endpoints
 notify_nats           publish bucket notifications to NATS endpoints
 notify_nsq            publish bucket notifications to NSQ endpoints
@@ -65,143 +64,6 @@ notify_redis          publish bucket notifications to Redis datastores
 > - '\*' at the end of arg means its mandatory.
 > - '\*' at the end of the values, means its the default value for the arg.
 > - When configured using environment variables, the `:name` can be specified using this format `MINIO_NOTIFY_WEBHOOK_ENABLE_<name>`.
-
-<a name="AMQP"></a>
-
-## Publish MinIO events via AMQP
-
-Install RabbitMQ from [here](https://www.rabbitmq.com/).
-
-### Step 1: Add AMQP endpoint to MinIO
-
-The AMQP configuration is located under the sub-system `notify_amqp` top-level key. Create a configuration key-value pair here for your AMQP instance. The key is a name for your AMQP endpoint, and the value is a collection of key-value parameters described in the table below.
-
-```
-KEY:
-notify_amqp[:name]  publish bucket notifications to AMQP endpoints
-
-ARGS:
-url*           (url)       AMQP server endpoint e.g. `amqp://myuser:mypassword@localhost:5672`
-exchange       (string)    name of the AMQP exchange
-exchange_type  (string)    AMQP exchange type
-routing_key    (string)    routing key for publishing
-mandatory      (on|off)    quietly ignore undelivered messages when set to 'off', default is 'on'
-durable        (on|off)    persist queue across broker restarts when set to 'on', default is 'off'
-no_wait        (on|off)    non-blocking message delivery when set to 'on', default is 'off'
-internal       (on|off)    set to 'on' for exchange to be not used directly by publishers, but only when bound to other exchanges
-auto_deleted   (on|off)    auto delete queue when set to 'on', when there are no consumers
-delivery_mode  (number)    set to '1' for non-persistent or '2' for persistent queue
-queue_dir      (path)      staging dir for undelivered messages e.g. '/home/events'
-queue_limit    (number)    maximum limit for undelivered messages, defaults to '100000'
-comment        (sentence)  optionally add a comment to this setting
-```
-
-Or environment variables
-
-```
-KEY:
-notify_amqp[:name]  publish bucket notifications to AMQP endpoints
-
-ARGS:
-MINIO_NOTIFY_AMQP_ENABLE*        (on|off)    enable notify_amqp target, default is 'off'
-MINIO_NOTIFY_AMQP_URL*           (url)       AMQP server endpoint e.g. `amqp://myuser:mypassword@localhost:5672`
-MINIO_NOTIFY_AMQP_EXCHANGE       (string)    name of the AMQP exchange
-MINIO_NOTIFY_AMQP_EXCHANGE_TYPE  (string)    AMQP exchange type
-MINIO_NOTIFY_AMQP_ROUTING_KEY    (string)    routing key for publishing
-MINIO_NOTIFY_AMQP_MANDATORY      (on|off)    quietly ignore undelivered messages when set to 'off', default is 'on'
-MINIO_NOTIFY_AMQP_DURABLE        (on|off)    persist queue across broker restarts when set to 'on', default is 'off'
-MINIO_NOTIFY_AMQP_NO_WAIT        (on|off)    non-blocking message delivery when set to 'on', default is 'off'
-MINIO_NOTIFY_AMQP_INTERNAL       (on|off)    set to 'on' for exchange to be not used directly by publishers, but only when bound to other exchanges
-MINIO_NOTIFY_AMQP_AUTO_DELETED   (on|off)    auto delete queue when set to 'on', when there are no consumers
-MINIO_NOTIFY_AMQP_DELIVERY_MODE  (number)    set to '1' for non-persistent or '2' for persistent queue
-MINIO_NOTIFY_AMQP_QUEUE_DIR      (path)      staging dir for undelivered messages e.g. '/home/events'
-MINIO_NOTIFY_AMQP_QUEUE_LIMIT    (number)    maximum limit for undelivered messages, defaults to '100000'
-MINIO_NOTIFY_AMQP_COMMENT        (sentence)  optionally add a comment to this setting
-```
-
-MinIO supports persistent event store. The persistent store will backup events when the AMQP broker goes offline and replays it when the broker comes back online. The event store can be configured by setting the directory path in `queue_dir` field and the maximum limit of events in the queue_dir in `queue_limit` field. For eg, the `queue_dir` can be `/home/events` and `queue_limit` can be `1000`. By default, the `queue_limit` is set to 100000.
-
-To update the configuration, use `mc admin config get notify_amqp` command to get the current configuration for `notify_amqp`.
-
-```sh
-$ mc admin config get myminio/ notify_amqp
-notify_amqp:1 delivery_mode="0" exchange_type="" no_wait="off" queue_dir="" queue_limit="0"  url="" auto_deleted="off" durable="off" exchange="" internal="off" mandatory="off" routing_key=""
-```
-
-Use `mc admin config set` command to update the configuration for the deployment.Restart the MinIO server to put the changes into effect. The server will print a line like `SQS ARNs: arn:minio:sqs::1:amqp` at start-up if there were no errors.
-
-An example configuration for RabbitMQ is shown below:
-
-```sh
-$ mc admin config set myminio/ notify_amqp:1 exchange="bucketevents" exchange_type="fanout" mandatory="false" no_wait="false"  url="amqp://myuser:mypassword@localhost:5672" auto_deleted="false" delivery_mode="0" durable="false" internal="false" routing_key="bucketlogs"
-```
-
-MinIO supports all the exchanges available in [RabbitMQ](https://www.rabbitmq.com/). For this setup, we are using `fanout` exchange.
-
-Note that, you can add as many AMQP server endpoint configurations as needed by providing an identifier (like "1" in the example above) for the AMQP instance and an object of per-server configuration parameters.
-
-### Step 2: Enable bucket notification using MinIO client
-
-We will enable bucket event notification to trigger whenever a JPEG image is uploaded or deleted `images` bucket on `myminio` server. Here ARN value is `arn:minio:sqs::1:amqp`. To understand more about ARN please follow [AWS ARN](http://docs.aws.amazon.com/general/latest/gr/aws-arns-and-namespaces.html) documentation.
-
-```
-mc mb myminio/images
-mc event add myminio/images arn:minio:sqs::1:amqp --suffix .jpg
-mc event list myminio/images
-arn:minio:sqs::1:amqp s3:ObjectCreated:*,s3:ObjectRemoved:* Filter: suffix=”.jpg”
-```
-
-### Step 3: Test on RabbitMQ
-
-The python program below waits on the queue exchange `bucketevents` and prints event notifications on the console. We use [Pika Python Client](https://www.rabbitmq.com/tutorials/tutorial-three-python.html) library to do this.
-
-```py
-#!/usr/bin/env python
-import pika
-
-connection = pika.BlockingConnection(pika.ConnectionParameters(
-        host='localhost'))
-channel = connection.channel()
-
-channel.exchange_declare(exchange='bucketevents',
-                         exchange_type='fanout')
-
-result = channel.queue_declare(exclusive=False)
-queue_name = result.method.queue
-
-channel.queue_bind(exchange='bucketevents',
-                   queue=queue_name)
-
-print(' [*] Waiting for logs. To exit press CTRL+C')
-
-def callback(ch, method, properties, body):
-    print(" [x] %r" % body)
-
-channel.basic_consume(callback,
-                      queue=queue_name,
-                      no_ack=False)
-
-channel.start_consuming()
-```
-
-Execute this example python program to watch for RabbitMQ events on the console.
-
-```py
-python rabbit.py
-```
-
-Open another terminal and upload a JPEG image into `images` bucket.
-
-```
-mc cp myphoto.jpg myminio/images
-```
-
-You should receive the following event notification via RabbitMQ once the upload completes.
-
-```py
-python rabbit.py
-'{"Records":[{"eventVersion":"2.0","eventSource":"aws:s3","awsRegion":"","eventTime":"2016–09–08T22:34:38.226Z","eventName":"s3:ObjectCreated:Put","userIdentity":{"principalId":"minio"},"requestParameters":{"sourceIPAddress":"10.1.10.150:44576"},"responseElements":{},"s3":{"s3SchemaVersion":"1.0","configurationId":"Config","bucket":{"name":"images","ownerIdentity":{"principalId":"minio"},"arn":"arn:aws:s3:::images"},"object":{"key":"myphoto.jpg","size":200436,"sequencer":"147279EAF9F40933"}}}],"level":"info","msg":"","time":"2016–09–08T15:34:38–07:00"}'
-```
 
 <a name="MQTT"></a>
 
@@ -277,7 +139,7 @@ We will enable bucket event notification to trigger whenever a JPEG image is upl
 mc mb myminio/images
 mc event add  myminio/images arn:minio:sqs::1:mqtt --suffix .jpg
 mc event list myminio/images
-arn:minio:sqs::1:amqp s3:ObjectCreated:*,s3:ObjectRemoved:* Filter: suffix=”.jpg”
+arn:minio:sqs::1:mqtt s3:ObjectCreated:*,s3:ObjectRemoved:* Filter: suffix=”.jpg”
 ```
 
 ### Step 3: Test on MQTT
