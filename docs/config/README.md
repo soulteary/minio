@@ -200,7 +200,6 @@ Notification targets supported by MinIO are in the following list. To configure 
 ```
 notify_webhook        publish bucket notifications to webhook endpoints
 notify_amqp           publish bucket notifications to AMQP endpoints
-notify_kafka          publish bucket notifications to Kafka endpoints
 notify_mqtt           publish bucket notifications to MQTT endpoints
 notify_nats           publish bucket notifications to NATS endpoints
 notify_nsq            publish bucket notifications to NSQ endpoints

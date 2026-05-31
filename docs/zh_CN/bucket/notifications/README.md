@@ -15,9 +15,8 @@
 | 支持的通知目标    |                             |                                 |
 | :-------------------------------- | --------------------------- | ------------------------------- |
 | [`AMQP`](#AMQP)                   | [`Redis`](#Redis)           | [`MySQL`](#MySQL)               |
-| [`MQTT`](#MQTT)                   | [`NATS`](#NATS)             | [`Apache Kafka`](#apache-kafka) |
+| [`MQTT`](#MQTT)                   | [`NATS`](#NATS)             | [`NSQ`](#NSQ)                     |
 | [`Elasticsearch`](#Elasticsearch) | [`PostgreSQL`](#PostgreSQL) | [`Webhooks`](#webhooks)         |
-| [`NSQ`](#NSQ)                     |                             |                                 |
 
 ## 前提条件
 
@@ -28,7 +27,6 @@
 $ mc admin config get myminio | grep notify
 notify_webhook        publish bucket notifications to webhook endpoints
 notify_amqp           publish bucket notifications to AMQP endpoints
-notify_kafka          publish bucket notifications to Kafka endpoints
 notify_mqtt           publish bucket notifications to MQTT endpoints
 notify_nats           publish bucket notifications to NATS endpoints
 notify_nsq            publish bucket notifications to NSQ endpoints
@@ -1054,164 +1052,6 @@ mysql> select * from minio_images;
 +--------------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
 1 row in set (0.01 sec)
 
-```
-
-<a name="apache-kafka"></a>
-
-## 使用Kafka发布MinIO事件
-
-安装[ Apache Kafka](http://kafka.apache.org/).
-
-### 第一步：确保确保至少满足最低要求
-
-MinIO要求Kafka版本0.10或者0.9.MinIO内部使用了 [Shopify/sarama](https://github.com/Shopify/sarama/) 库，因此需要和该库有同样的版本兼容性。
-
-###第二步：集成Kafka到MinIO
-
-MinIO支持持久事件存储。持久存储将在kafka broker离线时备份事件，并在broker恢复在线时重播事件。事件存储的目录可以通过`queue_dir`字段设置，存储的最大限制可以通过`queue_limit`设置。例如, `queue_dir`可以设置为`/home/events`, 并且`queue_limit`可以设置为`1000`. 默认情况下 `queue_limit` 是100000.
-
-```
-KEY:
-notify_kafka[:name]  发布存储桶通知到Kafka endpoints
-
-ARGS:
-brokers*         (csv)       逗号分隔的Kafka broker地址列表
-topic            (string)    用于存储桶通知的Kafka topic
-sasl_username    (string)    SASL/PLAIN或者SASL/SCRAM身份验证的用户名
-sasl_password    (string)    SASL/PLAIN或者SASL/SCRAM身份验证的密码
-sasl_mechanism   (string)    sasl认证机制, 默认是'PLAIN'
-tls_client_auth  (string)    clientAuth确定TLS客户端身份验证的Kafka服务器策略
-sasl             (on|off)    设置为'on'代表启用 SASL身份验证
-tls              (on|off)    设置为'on'代表启用TLS
-tls_skip_verify  (on|off)    跳过TLS证书验证, 默认是"on" (可信的)
-client_tls_cert  (path)      用于mTLS身份验证的客户端证书的路径
-client_tls_key   (path)      mTLS身份验证的客户端密钥的路径
-queue_dir        (path)      未发送消息的暂存目录 例如 '/home/events'
-queue_limit      (number)    未发送消息的最大限制, 默认是'100000'
-version          (string)    指定 Kafka集群的版本， 例如 '2.2.0'
-comment          (sentence)  可选的注释说明
-```
-          
-或者通过环境变量（说明详见上面）
-```
-KEY:
-notify_kafka[:name]  publish bucket notifications to Kafka endpoints
-
-ARGS:
-MINIO_NOTIFY_KAFKA_ENABLE*          (on|off)                enable notify_kafka target, default is 'off'
-MINIO_NOTIFY_KAFKA_BROKERS*         (csv)                   comma separated list of Kafka broker addresses
-MINIO_NOTIFY_KAFKA_TOPIC            (string)                Kafka topic used for bucket notifications
-MINIO_NOTIFY_KAFKA_SASL_USERNAME    (string)                username for SASL/PLAIN or SASL/SCRAM authentication
-MINIO_NOTIFY_KAFKA_SASL_PASSWORD    (string)                password for SASL/PLAIN or SASL/SCRAM authentication
-MINIO_NOTIFY_KAFKA_SASL_MECHANISM   (plain*|sha256|sha512)  sasl authentication mechanism, default 'plain'
-MINIO_NOTIFY_KAFKA_TLS_CLIENT_AUTH  (string)                clientAuth determines the Kafka server's policy for TLS client auth
-MINIO_NOTIFY_KAFKA_SASL             (on|off)                set to 'on' to enable SASL authentication
-MINIO_NOTIFY_KAFKA_TLS              (on|off)                set to 'on' to enable TLS
-MINIO_NOTIFY_KAFKA_TLS_SKIP_VERIFY  (on|off)                trust server TLS without verification, defaults to "on" (verify)
-MINIO_NOTIFY_KAFKA_CLIENT_TLS_CERT  (path)                  path to client certificate for mTLS auth
-MINIO_NOTIFY_KAFKA_CLIENT_TLS_KEY   (path)                  path to client key for mTLS auth
-MINIO_NOTIFY_KAFKA_QUEUE_DIR        (path)                  staging dir for undelivered messages e.g. '/home/events'
-MINIO_NOTIFY_KAFKA_QUEUE_LIMIT      (number)                maximum limit for undelivered messages, defaults to '100000'
-MINIO_NOTIFY_KAFKA_COMMENT          (sentence)              optionally add a comment to this setting
-MINIO_NOTIFY_KAFKA_VERSION          (string)                specify the version of the Kafka cluster e.g. '2.2.0'
-```
-
-更新配置前, 使用`mc admin config get`命令获取当前配置
-
-```sh
-$ mc admin config get myminio/ notify_kafka
-notify_kafka:1 tls_skip_verify="off"  queue_dir="" queue_limit="0" sasl="off" sasl_password="" sasl_username="" tls_client_auth="0" tls="off" brokers="" topic="" client_tls_cert="" client_tls_key="" version=""
-```
-
-使用`mc admin config set`命令更新配置后，重启MinIO Server让配置生效。 如果一切顺利，MinIO Server会在启动时输出一行信息，类似 `SQS ARNs: arn:minio:sqs::1:kafka`。`bucketevents`是kafka在此示例中使用的主题。
-
-```sh
-$ mc admin config set myminio notify_kafka:1 tls_skip_verify="off"  queue_dir="" queue_limit="0" sasl="off" sasl_password="" sasl_username="" tls_client_auth="0" tls="off" client_tls_cert="" client_tls_key="" brokers="localhost:9092,localhost:9093" topic="bucketevents" version=""
-```
-
-### 第三步：使用MinIO客户端启用bucket通知
-
-
-我们现在可以在一个叫`images`的存储桶上开启事件通知，一旦上有文件上传到存储桶中，事件将被触发。在这里，ARN的值是``arn:minio:sqs:us-east-1:1:kafka``。更多有关ARN的资料，请参考[这里](http://docs.aws.amazon.com/general/latest/gr/aws-arns-and-namespaces.html)。
-
-```
-mc mb myminio/images
-mc event add  myminio/images arn:minio:sqs::1:kafka --suffix .jpg
-mc event list myminio/images
-arn:minio:sqs::1:kafka s3:ObjectCreated:*,s3:ObjectRemoved:* Filter: suffix=”.jpg”
-```
-
-### 第四步：验证Kafka
-
-我们使用 [kafkacat](https://github.com/edenhill/kafkacat) 将所有的通知输出到控制台。
-
-```
-kafkacat -C -b localhost:9092 -t bucketevents
-```
-
-打开一个新的terminal终端并上传一张JPEG图片到``images`` 存储桶。
-
-```
-mc cp myphoto.jpg myminio/images
-```
-
-`kafkacat` 输出事件通知到控制台。
-
-```
-kafkacat -b localhost:9092 -t bucketevents
-{
-    "EventName": "s3:ObjectCreated:Put",
-    "Key": "images/myphoto.jpg",
-    "Records": [
-        {
-            "eventVersion": "2.0",
-            "eventSource": "minio:s3",
-            "awsRegion": "",
-            "eventTime": "2019-09-10T17:41:54Z",
-            "eventName": "s3:ObjectCreated:Put",
-            "userIdentity": {
-                "principalId": "AKIAIOSFODNN7EXAMPLE"
-            },
-            "requestParameters": {
-                "accessKey": "AKIAIOSFODNN7EXAMPLE",
-                "region": "",
-                "sourceIPAddress": "192.168.56.192"
-            },
-            "responseElements": {
-                "x-amz-request-id": "15C3249451E12784",
-                "x-minio-deployment-id": "751a8ba6-acb2-42f6-a297-4cdf1cf1fa4f",
-                "x-minio-origin-endpoint": "http://192.168.97.83:9000"
-            },
-            "s3": {
-                "s3SchemaVersion": "1.0",
-                "configurationId": "Config",
-                "bucket": {
-                    "name": "images",
-                    "ownerIdentity": {
-                        "principalId": "AKIAIOSFODNN7EXAMPLE"
-                    },
-                    "arn": "arn:aws:s3:::images"
-                },
-                "object": {
-                    "key": "myphoto.jpg",
-                    "size": 6474,
-                    "eTag": "430f89010c77aa34fc8760696da62d08-1",
-                    "contentType": "image/jpeg",
-                    "userMetadata": {
-                        "content-type": "image/jpeg"
-                    },
-                    "versionId": "1",
-                    "sequencer": "15C32494527B46C5"
-                }
-            },
-            "source": {
-                "host": "192.168.56.192",
-                "port": "",
-                "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:69.0) Gecko/20100101 Firefox/69.0"
-            }
-        }
-    ]
-}
 ```
 
 <a name="webhooks"></a>

@@ -740,8 +740,7 @@ func migrateV9ToV10() error {
 	return nil
 }
 
-// Version '10' to '11' migration. Add support for Kafka
-// notifications.
+// Version '10' to '11' migration.
 func migrateV10ToV11() error {
 	configFile := getConfigFile()
 
@@ -799,10 +798,6 @@ func migrateV10ToV11() error {
 	} else {
 		srvConfig.Notify.PostgreSQL = cv10.Notify.PostgreSQL
 	}
-	// V10 will not have a Kafka config. So we initialize one here.
-	srvConfig.Notify.Kafka = make(map[string]target.KafkaArgs)
-	srvConfig.Notify.Kafka["1"] = target.KafkaArgs{}
-
 	if err = Save(configFile, srvConfig); err != nil {
 		return fmt.Errorf("Failed to migrate config from ‘%s’ to ‘%s’. %w", cv10.Version, srvConfig.Version, err)
 	}
@@ -863,12 +858,6 @@ func migrateV11ToV12() error {
 		srvConfig.Notify.PostgreSQL["1"] = target.PostgreSQLArgs{}
 	} else {
 		srvConfig.Notify.PostgreSQL = cv11.Notify.PostgreSQL
-	}
-	if len(cv11.Notify.Kafka) == 0 {
-		srvConfig.Notify.Kafka = make(map[string]target.KafkaArgs)
-		srvConfig.Notify.Kafka["1"] = target.KafkaArgs{}
-	} else {
-		srvConfig.Notify.Kafka = cv11.Notify.Kafka
 	}
 
 	// V12 will have an updated config of nats. So we create a new one or we
@@ -964,12 +953,6 @@ func migrateV12ToV13() error {
 	} else {
 		srvConfig.Notify.PostgreSQL = cv12.Notify.PostgreSQL
 	}
-	if len(cv12.Notify.Kafka) == 0 {
-		srvConfig.Notify.Kafka = make(map[string]target.KafkaArgs)
-		srvConfig.Notify.Kafka["1"] = target.KafkaArgs{}
-	} else {
-		srvConfig.Notify.Kafka = cv12.Notify.Kafka
-	}
 	if len(cv12.Notify.NATS) == 0 {
 		srvConfig.Notify.NATS = make(map[string]target.NATSArgs)
 		srvConfig.Notify.NATS["1"] = target.NATSArgs{}
@@ -1043,12 +1026,6 @@ func migrateV13ToV14() error {
 		srvConfig.Notify.PostgreSQL["1"] = target.PostgreSQLArgs{}
 	} else {
 		srvConfig.Notify.PostgreSQL = cv13.Notify.PostgreSQL
-	}
-	if len(cv13.Notify.Kafka) == 0 {
-		srvConfig.Notify.Kafka = make(map[string]target.KafkaArgs)
-		srvConfig.Notify.Kafka["1"] = target.KafkaArgs{}
-	} else {
-		srvConfig.Notify.Kafka = cv13.Notify.Kafka
 	}
 	if len(cv13.Notify.NATS) == 0 {
 		srvConfig.Notify.NATS = make(map[string]target.NATSArgs)
@@ -1128,12 +1105,6 @@ func migrateV14ToV15() error {
 		srvConfig.Notify.PostgreSQL["1"] = target.PostgreSQLArgs{}
 	} else {
 		srvConfig.Notify.PostgreSQL = cv14.Notify.PostgreSQL
-	}
-	if len(cv14.Notify.Kafka) == 0 {
-		srvConfig.Notify.Kafka = make(map[string]target.KafkaArgs)
-		srvConfig.Notify.Kafka["1"] = target.KafkaArgs{}
-	} else {
-		srvConfig.Notify.Kafka = cv14.Notify.Kafka
 	}
 	if len(cv14.Notify.NATS) == 0 {
 		srvConfig.Notify.NATS = make(map[string]target.NATSArgs)
@@ -1216,12 +1187,6 @@ func migrateV15ToV16() error {
 		srvConfig.Notify.PostgreSQL["1"] = target.PostgreSQLArgs{}
 	} else {
 		srvConfig.Notify.PostgreSQL = cv15.Notify.PostgreSQL
-	}
-	if len(cv15.Notify.Kafka) == 0 {
-		srvConfig.Notify.Kafka = make(map[string]target.KafkaArgs)
-		srvConfig.Notify.Kafka["1"] = target.KafkaArgs{}
-	} else {
-		srvConfig.Notify.Kafka = cv15.Notify.Kafka
 	}
 	if len(cv15.Notify.NATS) == 0 {
 		srvConfig.Notify.NATS = make(map[string]target.NATSArgs)
@@ -1331,12 +1296,6 @@ func migrateV16ToV17() error {
 			srvConfig.Notify.PostgreSQL[k] = v
 		}
 	}
-	if len(cv16.Notify.Kafka) == 0 {
-		srvConfig.Notify.Kafka = make(map[string]target.KafkaArgs)
-		srvConfig.Notify.Kafka["1"] = target.KafkaArgs{}
-	} else {
-		srvConfig.Notify.Kafka = cv16.Notify.Kafka
-	}
 	if len(cv16.Notify.NATS) == 0 {
 		srvConfig.Notify.NATS = make(map[string]target.NATSArgs)
 		srvConfig.Notify.NATS["1"] = target.NATSArgs{}
@@ -1440,12 +1399,6 @@ func migrateV17ToV18() error {
 	} else {
 		srvConfig.Notify.PostgreSQL = cv17.Notify.PostgreSQL
 	}
-	if len(cv17.Notify.Kafka) == 0 {
-		srvConfig.Notify.Kafka = make(map[string]target.KafkaArgs)
-		srvConfig.Notify.Kafka["1"] = target.KafkaArgs{}
-	} else {
-		srvConfig.Notify.Kafka = cv17.Notify.Kafka
-	}
 	if len(cv17.Notify.NATS) == 0 {
 		srvConfig.Notify.NATS = make(map[string]target.NATSArgs)
 		srvConfig.Notify.NATS["1"] = target.NATSArgs{}
@@ -1541,12 +1494,6 @@ func migrateV18ToV19() error {
 		}
 	} else {
 		srvConfig.Notify.PostgreSQL = cv18.Notify.PostgreSQL
-	}
-	if len(cv18.Notify.Kafka) == 0 {
-		srvConfig.Notify.Kafka = make(map[string]target.KafkaArgs)
-		srvConfig.Notify.Kafka["1"] = target.KafkaArgs{}
-	} else {
-		srvConfig.Notify.Kafka = cv18.Notify.Kafka
 	}
 	if len(cv18.Notify.NATS) == 0 {
 		srvConfig.Notify.NATS = make(map[string]target.NATSArgs)
@@ -1644,12 +1591,6 @@ func migrateV19ToV20() error {
 	} else {
 		srvConfig.Notify.PostgreSQL = cv19.Notify.PostgreSQL
 	}
-	if len(cv19.Notify.Kafka) == 0 {
-		srvConfig.Notify.Kafka = make(map[string]target.KafkaArgs)
-		srvConfig.Notify.Kafka["1"] = target.KafkaArgs{}
-	} else {
-		srvConfig.Notify.Kafka = cv19.Notify.Kafka
-	}
 	if len(cv19.Notify.NATS) == 0 {
 		srvConfig.Notify.NATS = make(map[string]target.NATSArgs)
 		srvConfig.Notify.NATS["1"] = target.NATSArgs{}
@@ -1744,12 +1685,6 @@ func migrateV20ToV21() error {
 		}
 	} else {
 		srvConfig.Notify.PostgreSQL = cv20.Notify.PostgreSQL
-	}
-	if len(cv20.Notify.Kafka) == 0 {
-		srvConfig.Notify.Kafka = make(map[string]target.KafkaArgs)
-		srvConfig.Notify.Kafka["1"] = target.KafkaArgs{}
-	} else {
-		srvConfig.Notify.Kafka = cv20.Notify.Kafka
 	}
 	if len(cv20.Notify.NATS) == 0 {
 		srvConfig.Notify.NATS = make(map[string]target.NATSArgs)
@@ -1849,12 +1784,6 @@ func migrateV21ToV22() error {
 	} else {
 		srvConfig.Notify.PostgreSQL = cv21.Notify.PostgreSQL
 	}
-	if len(cv21.Notify.Kafka) == 0 {
-		srvConfig.Notify.Kafka = make(map[string]target.KafkaArgs)
-		srvConfig.Notify.Kafka["1"] = target.KafkaArgs{}
-	} else {
-		srvConfig.Notify.Kafka = cv21.Notify.Kafka
-	}
 	if len(cv21.Notify.NATS) == 0 {
 		srvConfig.Notify.NATS = make(map[string]target.NATSArgs)
 		srvConfig.Notify.NATS["1"] = target.NATSArgs{}
@@ -1952,12 +1881,6 @@ func migrateV22ToV23() error {
 		}
 	} else {
 		srvConfig.Notify.PostgreSQL = cv22.Notify.PostgreSQL
-	}
-	if len(cv22.Notify.Kafka) == 0 {
-		srvConfig.Notify.Kafka = make(map[string]target.KafkaArgs)
-		srvConfig.Notify.Kafka["1"] = target.KafkaArgs{}
-	} else {
-		srvConfig.Notify.Kafka = cv22.Notify.Kafka
 	}
 	if len(cv22.Notify.NATS) == 0 {
 		srvConfig.Notify.NATS = make(map[string]target.NATSArgs)
@@ -2066,12 +1989,6 @@ func migrateV23ToV24() error {
 	} else {
 		srvConfig.Notify.PostgreSQL = cv23.Notify.PostgreSQL
 	}
-	if len(cv23.Notify.Kafka) == 0 {
-		srvConfig.Notify.Kafka = make(map[string]target.KafkaArgs)
-		srvConfig.Notify.Kafka["1"] = target.KafkaArgs{}
-	} else {
-		srvConfig.Notify.Kafka = cv23.Notify.Kafka
-	}
 	if len(cv23.Notify.NATS) == 0 {
 		srvConfig.Notify.NATS = make(map[string]target.NATSArgs)
 		srvConfig.Notify.NATS["1"] = target.NATSArgs{}
@@ -2178,12 +2095,6 @@ func migrateV24ToV25() error {
 		}
 	} else {
 		srvConfig.Notify.PostgreSQL = cv24.Notify.PostgreSQL
-	}
-	if len(cv24.Notify.Kafka) == 0 {
-		srvConfig.Notify.Kafka = make(map[string]target.KafkaArgs)
-		srvConfig.Notify.Kafka["1"] = target.KafkaArgs{}
-	} else {
-		srvConfig.Notify.Kafka = cv24.Notify.Kafka
 	}
 	if len(cv24.Notify.NATS) == 0 {
 		srvConfig.Notify.NATS = make(map[string]target.NATSArgs)
@@ -2296,12 +2207,6 @@ func migrateV25ToV26() error {
 		}
 	} else {
 		srvConfig.Notify.PostgreSQL = cv25.Notify.PostgreSQL
-	}
-	if len(cv25.Notify.Kafka) == 0 {
-		srvConfig.Notify.Kafka = make(map[string]target.KafkaArgs)
-		srvConfig.Notify.Kafka["1"] = target.KafkaArgs{}
-	} else {
-		srvConfig.Notify.Kafka = cv25.Notify.Kafka
 	}
 	if len(cv25.Notify.NATS) == 0 {
 		srvConfig.Notify.NATS = make(map[string]target.NATSArgs)
@@ -2751,9 +2656,6 @@ func migrateMinioSysConfigToKV(objAPI ObjectLayer) error {
 	}
 	for k, args := range cfg.Notify.Elasticsearch {
 		notify.SetNotifyES(newCfg, k, args)
-	}
-	for k, args := range cfg.Notify.Kafka {
-		notify.SetNotifyKafka(newCfg, k, args)
 	}
 	for k, args := range cfg.Notify.MQTT {
 		notify.SetNotifyMQTT(newCfg, k, args)

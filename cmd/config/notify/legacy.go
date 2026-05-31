@@ -19,84 +19,10 @@ package notify
 import (
 	"fmt"
 	"strconv"
-	"strings"
 
 	"github.com/minio/minio/cmd/config"
 	"github.com/minio/minio/pkg/event/target"
 )
-
-// SetNotifyKafka - helper for config migration from older config.
-func SetNotifyKafka(s config.Config, kName string, cfg target.KafkaArgs) error {
-	if !cfg.Enable {
-		return nil
-	}
-
-	if err := cfg.Validate(); err != nil {
-		return err
-	}
-
-	s[config.NotifyKafkaSubSys][kName] = config.KVS{
-		config.KV{
-			Key:   config.Enable,
-			Value: config.EnableOn,
-		},
-		config.KV{
-			Key: target.KafkaBrokers,
-			Value: func() string {
-				var brokers []string
-				for _, broker := range cfg.Brokers {
-					brokers = append(brokers, broker.String())
-				}
-				return strings.Join(brokers, config.ValueSeparator)
-			}(),
-		},
-		config.KV{
-			Key:   target.KafkaTopic,
-			Value: cfg.Topic,
-		},
-		config.KV{
-			Key:   target.KafkaQueueDir,
-			Value: cfg.QueueDir,
-		},
-		config.KV{
-			Key:   target.KafkaClientTLSCert,
-			Value: cfg.TLS.ClientTLSCert,
-		},
-		config.KV{
-			Key:   target.KafkaClientTLSKey,
-			Value: cfg.TLS.ClientTLSKey,
-		},
-		config.KV{
-			Key:   target.KafkaQueueLimit,
-			Value: strconv.Itoa(int(cfg.QueueLimit)),
-		},
-		config.KV{
-			Key:   target.KafkaTLS,
-			Value: config.FormatBool(cfg.TLS.Enable),
-		},
-		config.KV{
-			Key:   target.KafkaTLSSkipVerify,
-			Value: config.FormatBool(cfg.TLS.SkipVerify),
-		},
-		config.KV{
-			Key:   target.KafkaTLSClientAuth,
-			Value: strconv.Itoa(int(cfg.TLS.ClientAuth)),
-		},
-		config.KV{
-			Key:   target.KafkaSASL,
-			Value: config.FormatBool(cfg.SASL.Enable),
-		},
-		config.KV{
-			Key:   target.KafkaSASLUsername,
-			Value: cfg.SASL.User,
-		},
-		config.KV{
-			Key:   target.KafkaSASLPassword,
-			Value: cfg.SASL.Password,
-		},
-	}
-	return nil
-}
 
 // SetNotifyAMQP - helper for config migration from older config.
 func SetNotifyAMQP(s config.Config, amqpName string, cfg target.AMQPArgs) error {

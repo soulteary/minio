@@ -243,7 +243,6 @@ type notifierV1 struct {
 	ElasticSearch map[string]target.ElasticsearchArgs `json:"elasticsearch"`
 	Redis         map[string]target.RedisArgs         `json:"redis"`
 	PostgreSQL    map[string]target.PostgreSQLArgs    `json:"postgresql"`
-	Kafka         map[string]target.KafkaArgs         `json:"kafka"`
 }
 
 // Notifier represents collection of supported notification queues in version 2
@@ -254,7 +253,6 @@ type notifierV2 struct {
 	ElasticSearch map[string]target.ElasticsearchArgs `json:"elasticsearch"`
 	Redis         map[string]target.RedisArgs         `json:"redis"`
 	PostgreSQL    map[string]target.PostgreSQLArgs    `json:"postgresql"`
-	Kafka         map[string]target.KafkaArgs         `json:"kafka"`
 }
 
 // configV7 server configuration version '7'.
@@ -340,7 +338,7 @@ type natsNotifyV1 struct {
 }
 
 // serverConfigV11 server configuration version '11' which is like
-// version '10' except it adds support for Kafka notifications.
+// version '10'.
 type serverConfigV11 struct {
 	Version string `json:"version"`
 
@@ -374,7 +372,6 @@ type serverConfigV12 struct {
 type notifierV3 struct {
 	AMQP          map[string]target.AMQPArgs          `json:"amqp"`
 	Elasticsearch map[string]target.ElasticsearchArgs `json:"elasticsearch"`
-	Kafka         map[string]target.KafkaArgs         `json:"kafka"`
 	MQTT          map[string]target.MQTTArgs          `json:"mqtt"`
 	MySQL         map[string]target.MySQLArgs         `json:"mysql"`
 	NATS          map[string]target.NATSArgs          `json:"nats"`

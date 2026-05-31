@@ -40,9 +40,8 @@ Bucket events can be published to the following targets:
 | Supported Notification Targets    |                             |                                 |
 | :-------------------------------- | --------------------------- | ------------------------------- |
 | [`AMQP`](#AMQP)                   | [`Redis`](#Redis)           | [`MySQL`](#MySQL)               |
-| [`MQTT`](#MQTT)                   | [`NATS`](#NATS)             | [`Apache Kafka`](#apache-kafka) |
+| [`MQTT`](#MQTT)                   | [`NATS`](#NATS)             | [`NSQ`](#NSQ)                     |
 | [`Elasticsearch`](#Elasticsearch) | [`PostgreSQL`](#PostgreSQL) | [`Webhooks`](#webhooks)         |
-| [`NSQ`](#NSQ)                     |                             |                                 |
 
 ## Prerequisites
 
@@ -53,7 +52,6 @@ Bucket events can be published to the following targets:
 $ mc admin config get myminio | grep notify
 notify_webhook        publish bucket notifications to webhook endpoints
 notify_amqp           publish bucket notifications to AMQP endpoints
-notify_kafka          publish bucket notifications to Kafka endpoints
 notify_mqtt           publish bucket notifications to MQTT endpoints
 notify_nats           publish bucket notifications to NATS endpoints
 notify_nsq            publish bucket notifications to NSQ endpoints
@@ -1102,163 +1100,6 @@ mysql> select * from minio_images;
 +--------------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
 1 row in set (0.01 sec)
 
-```
-
-<a name="apache-kafka"></a>
-
-## Publish MinIO events via Kafka
-
-Install Apache Kafka from [here](http://kafka.apache.org/).
-
-### Step 1: Ensure minimum requirements are met
-
-MinIO requires Kafka version 0.10 or 0.9. Internally MinIO uses the [Shopify/sarama](https://github.com/Shopify/sarama/) library and so has the same version compatibility as provided by this library.
-
-### Step 2: Add Kafka endpoint to MinIO
-
-MinIO supports persistent event store. The persistent store will backup events when the kafka broker goes offline and replays it when the broker comes back online. The event store can be configured by setting the directory path in `queue_dir` field and the maximum limit of events in the queue_dir in `queue_limit` field. For eg, the `queue_dir` can be `/home/events` and `queue_limit` can be `1000`. By default, the `queue_limit` is set to 100000.
-
-```
-KEY:
-notify_kafka[:name]  publish bucket notifications to Kafka endpoints
-
-ARGS:
-brokers*         (csv)       comma separated list of Kafka broker addresses
-topic            (string)    Kafka topic used for bucket notifications
-sasl_username    (string)    username for SASL/PLAIN or SASL/SCRAM authentication
-sasl_password    (string)    password for SASL/PLAIN or SASL/SCRAM authentication
-sasl_mechanism   (string)    sasl authentication mechanism, default 'PLAIN'
-tls_client_auth  (string)    clientAuth determines the Kafka server's policy for TLS client auth
-sasl             (on|off)    set to 'on' to enable SASL authentication
-tls              (on|off)    set to 'on' to enable TLS
-tls_skip_verify  (on|off)    trust server TLS without verification, defaults to "on" (verify)
-client_tls_cert  (path)      path to client certificate for mTLS auth
-client_tls_key   (path)      path to client key for mTLS auth
-queue_dir        (path)      staging dir for undelivered messages e.g. '/home/events'
-queue_limit      (number)    maximum limit for undelivered messages, defaults to '100000'
-version          (string)    specify the version of the Kafka cluster e.g '2.2.0'
-comment          (sentence)  optionally add a comment to this setting
-```
-
-or environment variables
-```
-KEY:
-notify_kafka[:name]  publish bucket notifications to Kafka endpoints
-
-ARGS:
-MINIO_NOTIFY_KAFKA_ENABLE*          (on|off)                enable notify_kafka target, default is 'off'
-MINIO_NOTIFY_KAFKA_BROKERS*         (csv)                   comma separated list of Kafka broker addresses
-MINIO_NOTIFY_KAFKA_TOPIC            (string)                Kafka topic used for bucket notifications
-MINIO_NOTIFY_KAFKA_SASL_USERNAME    (string)                username for SASL/PLAIN or SASL/SCRAM authentication
-MINIO_NOTIFY_KAFKA_SASL_PASSWORD    (string)                password for SASL/PLAIN or SASL/SCRAM authentication
-MINIO_NOTIFY_KAFKA_SASL_MECHANISM   (plain*|sha256|sha512)  sasl authentication mechanism, default 'plain'
-MINIO_NOTIFY_KAFKA_TLS_CLIENT_AUTH  (string)                clientAuth determines the Kafka server's policy for TLS client auth
-MINIO_NOTIFY_KAFKA_SASL             (on|off)                set to 'on' to enable SASL authentication
-MINIO_NOTIFY_KAFKA_TLS              (on|off)                set to 'on' to enable TLS
-MINIO_NOTIFY_KAFKA_TLS_SKIP_VERIFY  (on|off)                trust server TLS without verification, defaults to "on" (verify)
-MINIO_NOTIFY_KAFKA_CLIENT_TLS_CERT  (path)                  path to client certificate for mTLS auth
-MINIO_NOTIFY_KAFKA_CLIENT_TLS_KEY   (path)                  path to client key for mTLS auth
-MINIO_NOTIFY_KAFKA_QUEUE_DIR        (path)                  staging dir for undelivered messages e.g. '/home/events'
-MINIO_NOTIFY_KAFKA_QUEUE_LIMIT      (number)                maximum limit for undelivered messages, defaults to '100000'
-MINIO_NOTIFY_KAFKA_COMMENT          (sentence)              optionally add a comment to this setting
-MINIO_NOTIFY_KAFKA_VERSION          (string)                specify the version of the Kafka cluster e.g. '2.2.0'
-```
-
-To update the configuration, use `mc admin config get` command to get the current configuration.
-
-```sh
-$ mc admin config get myminio/ notify_kafka
-notify_kafka:1 tls_skip_verify="off"  queue_dir="" queue_limit="0" sasl="off" sasl_password="" sasl_username="" tls_client_auth="0" tls="off" brokers="" topic="" client_tls_cert="" client_tls_key="" version=""
-```
-
-Use `mc admin config set` command to update the configuration for the deployment. Restart the MinIO server to put the changes into effect. The server will print a line like `SQS ARNs: arn:minio:sqs::1:kafka` at start-up if there were no errors.`bucketevents` is the topic used by kafka in this example.
-
-```sh
-$ mc admin config set myminio notify_kafka:1 tls_skip_verify="off"  queue_dir="" queue_limit="0" sasl="off" sasl_password="" sasl_username="" tls_client_auth="0" tls="off" client_tls_cert="" client_tls_key="" brokers="localhost:9092,localhost:9093" topic="bucketevents" version=""
-```
-
-### Step 3: Enable bucket notification using MinIO client
-
-We will enable bucket event notification to trigger whenever a JPEG image is uploaded or deleted from `images` bucket on `myminio` server. Here ARN value is `arn:minio:sqs::1:kafka`. To understand more about ARN please follow [AWS ARN](http://docs.aws.amazon.com/general/latest/gr/aws-arns-and-namespaces.html) documentation.
-
-```
-mc mb myminio/images
-mc event add  myminio/images arn:minio:sqs::1:kafka --suffix .jpg
-mc event list myminio/images
-arn:minio:sqs::1:kafka s3:ObjectCreated:*,s3:ObjectRemoved:* Filter: suffix=”.jpg”
-```
-
-### Step 4: Test on Kafka
-
-We used [kafkacat](https://github.com/edenhill/kafkacat) to print all notifications on the console.
-
-```
-kafkacat -C -b localhost:9092 -t bucketevents
-```
-
-Open another terminal and upload a JPEG image into `images` bucket.
-
-```
-mc cp myphoto.jpg myminio/images
-```
-
-`kafkacat` prints the event notification to the console.
-
-```
-kafkacat -b localhost:9092 -t bucketevents
-{
-    "EventName": "s3:ObjectCreated:Put",
-    "Key": "images/myphoto.jpg",
-    "Records": [
-        {
-            "eventVersion": "2.0",
-            "eventSource": "minio:s3",
-            "awsRegion": "",
-            "eventTime": "2019-09-10T17:41:54Z",
-            "eventName": "s3:ObjectCreated:Put",
-            "userIdentity": {
-                "principalId": "AKIAIOSFODNN7EXAMPLE"
-            },
-            "requestParameters": {
-                "accessKey": "AKIAIOSFODNN7EXAMPLE",
-                "region": "",
-                "sourceIPAddress": "192.168.56.192"
-            },
-            "responseElements": {
-                "x-amz-request-id": "15C3249451E12784",
-                "x-minio-deployment-id": "751a8ba6-acb2-42f6-a297-4cdf1cf1fa4f",
-                "x-minio-origin-endpoint": "http://192.168.97.83:9000"
-            },
-            "s3": {
-                "s3SchemaVersion": "1.0",
-                "configurationId": "Config",
-                "bucket": {
-                    "name": "images",
-                    "ownerIdentity": {
-                        "principalId": "AKIAIOSFODNN7EXAMPLE"
-                    },
-                    "arn": "arn:aws:s3:::images"
-                },
-                "object": {
-                    "key": "myphoto.jpg",
-                    "size": 6474,
-                    "eTag": "430f89010c77aa34fc8760696da62d08-1",
-                    "contentType": "image/jpeg",
-                    "userMetadata": {
-                        "content-type": "image/jpeg"
-                    },
-                    "versionId": "1",
-                    "sequencer": "15C32494527B46C5"
-                }
-            },
-            "source": {
-                "host": "192.168.56.192",
-                "port": "",
-                "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:69.0) Gecko/20100101 Firefox/69.0"
-            }
-        }
-    ]
-}
 ```
 
 <a name="webhooks"></a>

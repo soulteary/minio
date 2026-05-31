@@ -25,7 +25,6 @@ import (
 type Config struct {
 	AMQP          map[string]target.AMQPArgs          `json:"amqp"`
 	Elasticsearch map[string]target.ElasticsearchArgs `json:"elasticsearch"`
-	Kafka         map[string]target.KafkaArgs         `json:"kafka"`
 	MQTT          map[string]target.MQTTArgs          `json:"mqtt"`
 	MySQL         map[string]target.MySQLArgs         `json:"mysql"`
 	NATS          map[string]target.NATSArgs          `json:"nats"`
@@ -49,7 +48,6 @@ func NewConfig() Config {
 		NATS:          make(map[string]target.NATSArgs),
 		Redis:         make(map[string]target.RedisArgs),
 		MySQL:         make(map[string]target.MySQLArgs),
-		Kafka:         make(map[string]target.KafkaArgs),
 		Webhook:       make(map[string]target.WebhookArgs),
 		PostgreSQL:    make(map[string]target.PostgreSQLArgs),
 		Elasticsearch: make(map[string]target.ElasticsearchArgs),
@@ -60,7 +58,6 @@ func NewConfig() Config {
 	cfg.NATS[defaultTarget] = target.NATSArgs{}
 	cfg.Redis[defaultTarget] = target.RedisArgs{}
 	cfg.MySQL[defaultTarget] = target.MySQLArgs{}
-	cfg.Kafka[defaultTarget] = target.KafkaArgs{}
 	cfg.Webhook[defaultTarget] = target.WebhookArgs{}
 	cfg.PostgreSQL[defaultTarget] = target.PostgreSQLArgs{}
 	cfg.Elasticsearch[defaultTarget] = target.ElasticsearchArgs{}

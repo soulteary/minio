@@ -18,7 +18,6 @@ package notify
 
 import (
 	"context"
-	"crypto/tls"
 	"crypto/x509"
 	"errors"
 	"net/http"
@@ -122,11 +121,6 @@ func FetchRegisteredTargets(ctx context.Context, cfg config.Config, transport *h
 		return nil, err
 	}
 
-	kafkaTargets, err := GetNotifyKafka(cfg[config.NotifyKafkaSubSys])
-	if err != nil {
-		return nil, err
-	}
-
 	mqttTargets, err := GetNotifyMQTT(cfg[config.NotifyMQTTSubSys], transport.TLSClientConfig.RootCAs)
 	if err != nil {
 		return nil, err
@@ -188,27 +182,6 @@ func FetchRegisteredTargets(ctx context.Context, cfg config.Config, transport *h
 			continue
 		}
 		newTarget, err := target.NewElasticsearchTarget(id, args, ctx.Done(), logger.LogOnceIf, test)
-		if err != nil {
-			targetsOffline = true
-			if returnOnTargetError {
-				return nil, err
-			}
-			_ = newTarget.Close()
-		}
-		if err = targetList.Add(newTarget); err != nil {
-			logger.LogIf(context.Background(), err)
-			if returnOnTargetError {
-				return nil, err
-			}
-		}
-	}
-
-	for id, args := range kafkaTargets {
-		if !args.Enable {
-			continue
-		}
-		args.TLS.RootCAs = transport.TLSClientConfig.RootCAs
-		newTarget, err := target.NewKafkaTarget(id, args, ctx.Done(), logger.LogOnceIf, test)
 		if err != nil {
 			targetsOffline = true
 			if returnOnTargetError {
@@ -376,7 +349,6 @@ func FetchRegisteredTargets(ctx context.Context, cfg config.Config, transport *h
 var (
 	DefaultNotificationKVS = map[string]config.KVS{
 		config.NotifyAMQPSubSys:     DefaultAMQPKVS,
-		config.NotifyKafkaSubSys:    DefaultKafkaKVS,
 		config.NotifyMQTTSubSys:     DefaultMQTTKVS,
 		config.NotifyMySQLSubSys:    DefaultMySQLKVS,
 		config.NotifyNATSSubSys:     DefaultNATSKVS,
@@ -422,207 +394,6 @@ func mergeTargets(cfgTargets map[string]config.KVS, envname string, defaultKVS c
 		newCfgTargets[tgt] = kv
 	}
 	return newCfgTargets
-}
-
-// DefaultKakfaKVS - default KV for kafka target
-var (
-	DefaultKafkaKVS = config.KVS{
-		config.KV{
-			Key:   config.Enable,
-			Value: config.EnableOff,
-		},
-		config.KV{
-			Key:   target.KafkaTopic,
-			Value: "",
-		},
-		config.KV{
-			Key:   target.KafkaBrokers,
-			Value: "",
-		},
-		config.KV{
-			Key:   target.KafkaSASLUsername,
-			Value: "",
-		},
-		config.KV{
-			Key:   target.KafkaSASLPassword,
-			Value: "",
-		},
-		config.KV{
-			Key:   target.KafkaSASLMechanism,
-			Value: "plain",
-		},
-		config.KV{
-			Key:   target.KafkaClientTLSCert,
-			Value: "",
-		},
-		config.KV{
-			Key:   target.KafkaClientTLSKey,
-			Value: "",
-		},
-		config.KV{
-			Key:   target.KafkaTLSClientAuth,
-			Value: "0",
-		},
-		config.KV{
-			Key:   target.KafkaSASL,
-			Value: config.EnableOff,
-		},
-		config.KV{
-			Key:   target.KafkaTLS,
-			Value: config.EnableOff,
-		},
-		config.KV{
-			Key:   target.KafkaTLSSkipVerify,
-			Value: config.EnableOff,
-		},
-		config.KV{
-			Key:   target.KafkaQueueLimit,
-			Value: "0",
-		},
-		config.KV{
-			Key:   target.KafkaQueueDir,
-			Value: "",
-		},
-		config.KV{
-			Key:   target.KafkaVersion,
-			Value: "",
-		},
-	}
-)
-
-// GetNotifyKafka - returns a map of registered notification 'kafka' targets
-func GetNotifyKafka(kafkaKVS map[string]config.KVS) (map[string]target.KafkaArgs, error) {
-	kafkaTargets := make(map[string]target.KafkaArgs)
-	for k, kv := range mergeTargets(kafkaKVS, target.EnvKafkaEnable, DefaultKafkaKVS) {
-		enableEnv := target.EnvKafkaEnable
-		if k != config.Default {
-			enableEnv = enableEnv + config.Default + k
-		}
-		enabled, err := config.ParseBool(env.Get(enableEnv, kv.Get(config.Enable)))
-		if err != nil {
-			return nil, err
-		}
-		if !enabled {
-			continue
-		}
-		var brokers []xnet.Host
-		brokersEnv := target.EnvKafkaBrokers
-		if k != config.Default {
-			brokersEnv = brokersEnv + config.Default + k
-		}
-		kafkaBrokers := env.Get(brokersEnv, kv.Get(target.KafkaBrokers))
-		if len(kafkaBrokers) == 0 {
-			return nil, config.Errorf("kafka 'brokers' cannot be empty")
-		}
-		for _, s := range strings.Split(kafkaBrokers, config.ValueSeparator) {
-			var host *xnet.Host
-			host, err = xnet.ParseHost(s)
-			if err != nil {
-				break
-			}
-			brokers = append(brokers, *host)
-		}
-		if err != nil {
-			return nil, err
-		}
-
-		queueLimitEnv := target.EnvKafkaQueueLimit
-		if k != config.Default {
-			queueLimitEnv = queueLimitEnv + config.Default + k
-		}
-		queueLimit, err := strconv.ParseUint(env.Get(queueLimitEnv, kv.Get(target.KafkaQueueLimit)), 10, 64)
-		if err != nil {
-			return nil, err
-		}
-
-		clientAuthEnv := target.EnvKafkaTLSClientAuth
-		if k != config.Default {
-			clientAuthEnv = clientAuthEnv + config.Default + k
-		}
-		clientAuth, err := strconv.Atoi(env.Get(clientAuthEnv, kv.Get(target.KafkaTLSClientAuth)))
-		if err != nil {
-			return nil, err
-		}
-
-		topicEnv := target.EnvKafkaTopic
-		if k != config.Default {
-			topicEnv = topicEnv + config.Default + k
-		}
-
-		queueDirEnv := target.EnvKafkaQueueDir
-		if k != config.Default {
-			queueDirEnv = queueDirEnv + config.Default + k
-		}
-
-		versionEnv := target.EnvKafkaVersion
-		if k != config.Default {
-			versionEnv = versionEnv + config.Default + k
-		}
-
-		kafkaArgs := target.KafkaArgs{
-			Enable:     enabled,
-			Brokers:    brokers,
-			Topic:      env.Get(topicEnv, kv.Get(target.KafkaTopic)),
-			QueueDir:   env.Get(queueDirEnv, kv.Get(target.KafkaQueueDir)),
-			QueueLimit: queueLimit,
-			Version:    env.Get(versionEnv, kv.Get(target.KafkaVersion)),
-		}
-
-		tlsEnableEnv := target.EnvKafkaTLS
-		if k != config.Default {
-			tlsEnableEnv = tlsEnableEnv + config.Default + k
-		}
-		tlsSkipVerifyEnv := target.EnvKafkaTLSSkipVerify
-		if k != config.Default {
-			tlsSkipVerifyEnv = tlsSkipVerifyEnv + config.Default + k
-		}
-
-		tlsClientTLSCertEnv := target.EnvKafkaClientTLSCert
-		if k != config.Default {
-			tlsClientTLSCertEnv = tlsClientTLSCertEnv + config.Default + k
-		}
-
-		tlsClientTLSKeyEnv := target.EnvKafkaClientTLSKey
-		if k != config.Default {
-			tlsClientTLSKeyEnv = tlsClientTLSKeyEnv + config.Default + k
-		}
-
-		kafkaArgs.TLS.Enable = env.Get(tlsEnableEnv, kv.Get(target.KafkaTLS)) == config.EnableOn
-		kafkaArgs.TLS.SkipVerify = env.Get(tlsSkipVerifyEnv, kv.Get(target.KafkaTLSSkipVerify)) == config.EnableOn
-		kafkaArgs.TLS.ClientAuth = tls.ClientAuthType(clientAuth)
-
-		kafkaArgs.TLS.ClientTLSCert = env.Get(tlsClientTLSCertEnv, kv.Get(target.KafkaClientTLSCert))
-		kafkaArgs.TLS.ClientTLSKey = env.Get(tlsClientTLSKeyEnv, kv.Get(target.KafkaClientTLSKey))
-
-		saslEnableEnv := target.EnvKafkaSASLEnable
-		if k != config.Default {
-			saslEnableEnv = saslEnableEnv + config.Default + k
-		}
-		saslUsernameEnv := target.EnvKafkaSASLUsername
-		if k != config.Default {
-			saslUsernameEnv = saslUsernameEnv + config.Default + k
-		}
-		saslPasswordEnv := target.EnvKafkaSASLPassword
-		if k != config.Default {
-			saslPasswordEnv = saslPasswordEnv + config.Default + k
-		}
-		saslMechanismEnv := target.EnvKafkaSASLMechanism
-		if k != config.Default {
-			saslMechanismEnv = saslMechanismEnv + config.Default + k
-		}
-		kafkaArgs.SASL.Enable = env.Get(saslEnableEnv, kv.Get(target.KafkaSASL)) == config.EnableOn
-		kafkaArgs.SASL.User = env.Get(saslUsernameEnv, kv.Get(target.KafkaSASLUsername))
-		kafkaArgs.SASL.Password = env.Get(saslPasswordEnv, kv.Get(target.KafkaSASLPassword))
-		kafkaArgs.SASL.Mechanism = env.Get(saslMechanismEnv, kv.Get(target.KafkaSASLMechanism))
-
-		if err = kafkaArgs.Validate(); err != nil {
-			return nil, err
-		}
-
-		kafkaTargets[k] = kafkaArgs
-	}
-
-	return kafkaTargets, nil
 }
 
 // DefaultMQTTKVS - default MQTT config

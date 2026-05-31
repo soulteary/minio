@@ -141,11 +141,6 @@ func initHelp() {
 			MultipleTargets: true,
 		},
 		config.HelpKV{
-			Key:             config.NotifyKafkaSubSys,
-			Description:     "publish bucket notifications to Kafka endpoints",
-			MultipleTargets: true,
-		},
-		config.HelpKV{
 			Key:             config.NotifyMQTTSubSys,
 			Description:     "publish bucket notifications to MQTT endpoints",
 			MultipleTargets: true,
@@ -209,7 +204,6 @@ func initHelp() {
 		config.LoggerWebhookSubSys:  logger.Help,
 		config.AuditWebhookSubSys:   logger.HelpAudit,
 		config.NotifyAMQPSubSys:     notify.HelpAMQP,
-		config.NotifyKafkaSubSys:    notify.HelpKafka,
 		config.NotifyMQTTSubSys:     notify.HelpMQTT,
 		config.NotifyNATSSubSys:     notify.HelpNATS,
 		config.NotifyNSQSubSys:      notify.HelpNSQ,
