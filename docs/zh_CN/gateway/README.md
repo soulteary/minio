@@ -1,7 +1,6 @@
 # MinIO 网关 [![Slack](https://slack.min.io/slack?type=svg)](https://slack.min.io)
 MinIO网关将Amazon S3兼容性添加到第三方云存储提供者。
 - [NAS](https://github.com/minio/minio/blob/master/docs/gateway/nas.md)
-- [HDFS](https://github.com/minio/minio/blob/master/docs/gateway/hdfs.md)
 - [S3](https://github.com/minio/minio/blob/master/docs/gateway/s3.md)
 
 ## 路线图

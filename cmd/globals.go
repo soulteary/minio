@@ -125,7 +125,7 @@ var (
 	// Indicates if the running minio is in gateway mode.
 	globalIsGateway = false
 
-	// Name of gateway server, e.g S3, NAS, HDFS, etc
+	// Name of gateway server, e.g S3, NAS, etc
 	globalGatewayName = ""
 
 	// This flag is set to 'true' by default

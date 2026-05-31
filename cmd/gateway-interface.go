@@ -23,7 +23,6 @@ import (
 // GatewayMinioSysTmp prefix is used to save metadata sent by Initialize Multipart Upload API.
 const (
 	GatewayMinioSysTmp = "minio.sys.tmp/"
-	HDFSBackendGateway = "hdfs"
 	NASBackendGateway  = "nas"
 	S3BackendGateway   = "s3"
 )
