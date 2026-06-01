@@ -43,7 +43,7 @@ import (
 	"github.com/minio/minio/pkg/madmin"
 	xnet "github.com/minio/minio/pkg/net"
 	"github.com/minio/minio/pkg/sync/errgroup"
-	"github.com/willf/bloom"
+	"github.com/bits-and-blooms/bloom/v3"
 )
 
 // NotificationSys - notification system.
