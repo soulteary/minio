@@ -20,7 +20,6 @@ import (
 	"net/http"
 
 	"github.com/gofiber/fiber/v3"
-	"github.com/gofiber/fiber/v3/middleware/adaptor"
 	"github.com/gofiber/fiber/v3/middleware/cors"
 	xhttp "github.com/minio/minio/cmd/http"
 	"github.com/minio/minio/cmd/logger"
@@ -114,30 +113,30 @@ func addCustomHeadersFiber(c fiber.Ctx) error {
 	return c.Next()
 }
 
-// globalFiberHandlers mirrors globalHandlers using Fiber middleware adapted from
-// net/http. Simple, body-independent header middlewares are implemented
-// natively to cut adaptor overhead; the remaining ones (auth, size limits,
-// stats, forwarding, etc.) still use adaptor.HTTPMiddleware. NOTE: until those
-// are also native, the first adaptor middleware materializes the request body
-// (NewFastHTTPHandler -> ConvertRequest -> PostBody), so fully streamed uploads
-// require converting the rest of this chain as well.
+// globalFiberHandlers mirrors globalHandlers (cmd/routers.go) with fully native
+// Fiber middleware. Crucially none of these read the request body, so it stays
+// a fasthttp stream until the actual handler consumes it - large uploads and
+// inter-node REST transfers are no longer buffered fully in memory (which the
+// previous adaptor.HTTPMiddleware chain did via ConvertRequest -> PostBody on
+// the very first middleware). Order matches globalHandlers exactly; see
+// fiber_middleware.go for the per-handler translations.
 var globalFiberHandlers = []fiber.Handler{
-	adaptor.HTTPMiddleware(filterReservedMetadata),
-	adaptor.HTTPMiddleware(setSSETLSHandler),
-	adaptor.HTTPMiddleware(setAuthHandler),
-	adaptor.HTTPMiddleware(setTimeValidityHandler),
-	adaptor.HTTPMiddleware(setBrowserCacheControlHandler),
-	adaptor.HTTPMiddleware(setReservedBucketHandler),
-	adaptor.HTTPMiddleware(setBrowserRedirectHandler),
-	adaptor.HTTPMiddleware(setCrossDomainPolicy),
-	adaptor.HTTPMiddleware(setRequestHeaderSizeLimitHandler),
-	adaptor.HTTPMiddleware(setRequestSizeLimitHandler),
-	adaptor.HTTPMiddleware(setHTTPStatsHandler),
-	adaptor.HTTPMiddleware(setRequestValidityHandler),
-	adaptor.HTTPMiddleware(setBucketForwardingHandler),
+	filterReservedMetadataFiber,
+	setSSETLSHandlerFiber,
+	setAuthHandlerFiber,
+	setTimeValidityHandlerFiber,
+	setBrowserCacheControlHandlerFiber,
+	setReservedBucketHandlerFiber,
+	setBrowserRedirectHandlerFiber,
+	setCrossDomainPolicyFiber,
+	setRequestHeaderSizeLimitHandlerFiber,
+	// setRequestSizeLimitHandler is covered by fiber's BodyLimit (newFiberApp).
+	setHTTPStatsHandlerFiber,
+	setRequestValidityHandlerFiber,
+	setBucketForwardingHandlerFiber,
 	addSecurityHeadersFiber,
 	addCustomHeadersFiber,
-	adaptor.HTTPMiddleware(setRedirectHandler),
+	setRedirectHandlerFiber,
 }
 
 func newFiberApp() *fiber.App {

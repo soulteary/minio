@@ -82,14 +82,19 @@ func allPathParams(c fiber.Ctx) map[string]string {
 		"api", "uploadId", "partNumber", "token", "events", "user", "serviceAccount",
 		"bucket", "object", "prefix", "file", "ext", "index", "assets",
 	} {
+		// strings.Clone detaches the value from the fasthttp request buffer:
+		// fiber recycles that buffer once the request completes, so any view
+		// handed to a goroutine that outlives the request (e.g. FS
+		// backgroundAppend, metacache writers) would otherwise race with the
+		// next request's ctx.Reset and read corrupted bytes.
 		if v := c.Params(name); v != "" {
-			m[name] = v
+			m[name] = strings.Clone(v)
 		}
 	}
 	if routeHasPathWildcard(c) {
 		if wild := strings.TrimPrefix(c.Params("*"), "/"); wild != "" {
 			if _, ok := m["object"]; !ok {
-				m["object"] = likelyUnescapeGeneric(wild, url.PathUnescape)
+				m["object"] = strings.Clone(likelyUnescapeGeneric(wild, url.PathUnescape))
 			}
 		}
 	}
@@ -328,31 +333,36 @@ func requestHost(c fiber.Ctx) string {
 }
 
 // pathParamObject returns the object key from Fiber path params.
+// All path-param accessors return strings.Clone'd values: fiber/fasthttp back
+// path params with the recycled request buffer, so any value that may be held
+// past the request (object names handed to FS backgroundAppend, metacache
+// writers, request contexts, etc.) must be detached to avoid a use-after-reset
+// data race.
 func pathParamObject(c fiber.Ctx) string {
 	if object, ok := c.Locals(fiberObjectParam).(string); ok && object != "" {
-		return likelyUnescapeGeneric(object, url.PathUnescape)
+		return strings.Clone(likelyUnescapeGeneric(object, url.PathUnescape))
 	}
 	obj := c.Params(fiberObjectParam)
 	if obj == "" && routeHasPathWildcard(c) {
 		obj = strings.TrimPrefix(c.Params("*"), "/")
 	}
-	return likelyUnescapeGeneric(obj, url.PathUnescape)
+	return strings.Clone(likelyUnescapeGeneric(obj, url.PathUnescape))
 }
 
 // pathParamBucket returns the bucket name from Fiber path params or vhost locals.
 func pathParamBucket(c fiber.Ctx) string {
 	if bucket, ok := c.Locals(fiberVhostBucketParam).(string); ok && bucket != "" {
-		return bucket
+		return strings.Clone(bucket)
 	}
 	if bucket, ok := c.Locals(fiberBucketParam).(string); ok && bucket != "" {
-		return bucket
+		return strings.Clone(bucket)
 	}
-	return c.Params(fiberBucketParam)
+	return strings.Clone(c.Params(fiberBucketParam))
 }
 
 // pathParamPrefix returns the prefix param used by admin heal routes.
 func pathParamPrefix(c fiber.Ctx) string {
-	return likelyUnescapeGeneric(c.Params(fiberPrefixParam), url.QueryUnescape)
+	return strings.Clone(likelyUnescapeGeneric(c.Params(fiberPrefixParam), url.QueryUnescape))
 }
 
 // setPathVars stores bucket/object on the context for helpers that read mux-style vars.
