@@ -136,5 +136,3 @@ require (
 	gopkg.in/ini.v1 v1.67.2 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
-
-replace github.com/coreos/bbolt => go.etcd.io/bbolt v1.3.11
