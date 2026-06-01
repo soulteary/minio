@@ -24,13 +24,11 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/gorilla/mux"
 	"github.com/minio/minio/cmd/config/identity/openid"
 	xhttp "github.com/minio/minio/cmd/http"
 	"github.com/minio/minio/cmd/logger"
 	"github.com/minio/minio/pkg/auth"
 	iampolicy "github.com/minio/minio/pkg/iam/policy"
-	"github.com/minio/minio/pkg/wildcard"
 )
 
 const (
@@ -66,49 +64,6 @@ const (
 
 // stsAPIHandlers implements and provides http handlers for AWS STS API.
 type stsAPIHandlers struct{}
-
-// registerSTSRouter - registers AWS STS compatible APIs.
-func registerSTSRouter(router *mux.Router) {
-	// Initialize STS.
-	sts := &stsAPIHandlers{}
-
-	// STS Router
-	stsRouter := router.NewRoute().PathPrefix(SlashSeparator).Subrouter()
-
-	// Assume roles with no JWT, handles AssumeRole.
-	stsRouter.Methods(http.MethodPost).MatcherFunc(func(r *http.Request, rm *mux.RouteMatch) bool {
-		ctypeOk := wildcard.MatchSimple("application/x-www-form-urlencoded*", r.Header.Get(xhttp.ContentType))
-		authOk := wildcard.MatchSimple(signV4Algorithm+"*", r.Header.Get(xhttp.Authorization))
-		noQueries := len(r.URL.Query()) == 0
-		return ctypeOk && authOk && noQueries
-	}).HandlerFunc(httpTraceAll(sts.AssumeRole))
-
-	// Assume roles with JWT handler, handles both ClientGrants and WebIdentity.
-	stsRouter.Methods(http.MethodPost).MatcherFunc(func(r *http.Request, rm *mux.RouteMatch) bool {
-		ctypeOk := wildcard.MatchSimple("application/x-www-form-urlencoded*", r.Header.Get(xhttp.ContentType))
-		noQueries := len(r.URL.Query()) == 0
-		return ctypeOk && noQueries
-	}).HandlerFunc(httpTraceAll(sts.AssumeRoleWithSSO))
-
-	// AssumeRoleWithClientGrants
-	stsRouter.Methods(http.MethodPost).HandlerFunc(httpTraceAll(sts.AssumeRoleWithClientGrants)).
-		Queries(stsAction, clientGrants).
-		Queries(stsVersion, stsAPIVersion).
-		Queries(stsToken, "{Token:.*}")
-
-	// AssumeRoleWithWebIdentity
-	stsRouter.Methods(http.MethodPost).HandlerFunc(httpTraceAll(sts.AssumeRoleWithWebIdentity)).
-		Queries(stsAction, webIdentity).
-		Queries(stsVersion, stsAPIVersion).
-		Queries(stsWebIdentityToken, "{Token:.*}")
-
-	// AssumeRoleWithLDAPIdentity
-	stsRouter.Methods(http.MethodPost).HandlerFunc(httpTraceAll(sts.AssumeRoleWithLDAPIdentity)).
-		Queries(stsAction, ldapIdentity).
-		Queries(stsVersion, stsAPIVersion).
-		Queries(stsLDAPUsername, "{LDAPUsername:.*}").
-		Queries(stsLDAPPassword, "{LDAPPassword:.*}")
-}
 
 func checkAssumeRoleAuth(ctx context.Context, r *http.Request) (user auth.Credentials, isErrCodeSTS bool, stsErr STSErrorCode) {
 	switch getRequestAuthType(r) {
@@ -419,7 +374,8 @@ func (sts *stsAPIHandlers) AssumeRoleWithSSO(w http.ResponseWriter, r *http.Requ
 // Connect-compatible identity provider.
 //
 // Eg:-
-//    $ curl https://minio:9000/?Action=AssumeRoleWithWebIdentity&WebIdentityToken=<jwt>
+//
+//	$ curl https://minio:9000/?Action=AssumeRoleWithWebIdentity&WebIdentityToken=<jwt>
 func (sts *stsAPIHandlers) AssumeRoleWithWebIdentity(w http.ResponseWriter, r *http.Request) {
 	sts.AssumeRoleWithSSO(w, r)
 }
@@ -428,7 +384,8 @@ func (sts *stsAPIHandlers) AssumeRoleWithWebIdentity(w http.ResponseWriter, r *h
 // OAuth2.0 client credential grants.
 //
 // Eg:-
-//    $ curl https://minio:9000/?Action=AssumeRoleWithClientGrants&Token=<jwt>
+//
+//	$ curl https://minio:9000/?Action=AssumeRoleWithClientGrants&Token=<jwt>
 func (sts *stsAPIHandlers) AssumeRoleWithClientGrants(w http.ResponseWriter, r *http.Request) {
 	sts.AssumeRoleWithSSO(w, r)
 }

@@ -35,7 +35,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gorilla/mux"
 	"github.com/minio/minio/cmd/config"
 	"github.com/minio/minio/cmd/crypto"
 	xhttp "github.com/minio/minio/cmd/http"
@@ -94,8 +93,7 @@ func (a adminAPIHandlers) ServerUpdateHandler(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	vars := mux.Vars(r)
-	updateURL := vars["updateURL"]
+	updateURL := urlVar(r, "updateURL")
 	mode := getMinioMode()
 	if updateURL == "" {
 		updateURL = minioReleaseInfoURL
@@ -191,8 +189,7 @@ func (a adminAPIHandlers) ServiceHandler(w http.ResponseWriter, r *http.Request)
 
 	defer logger.AuditLog(ctx, w, r, mustGetClaimsFromToken(r))
 
-	vars := mux.Vars(r)
-	action := vars["action"]
+	action := urlVar(r, "action")
 
 	var serviceSig serviceSignal
 	switch madmin.ServiceAction(action) {
@@ -413,11 +410,9 @@ func (a adminAPIHandlers) ForceUnlockHandler(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	vars := mux.Vars(r)
-
 	var args dsync.LockArgs
 	lockersMap := make(map[string]dsync.NetLocker)
-	for _, path := range strings.Split(vars["paths"], ",") {
+	for _, path := range strings.Split(urlVar(r, "paths"), ",") {
 		if path == "" {
 			continue
 		}
@@ -505,8 +500,7 @@ func (a adminAPIHandlers) StartProfilingHandler(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	vars := mux.Vars(r)
-	profiles := strings.Split(vars["profilerType"], ",")
+	profiles := strings.Split(urlVar(r, "profilerType"), ",")
 	thisAddr, err := xnet.ParseHost(globalLocalNodeName)
 	if err != nil {
 		writeErrorResponseJSON(ctx, w, toAdminAPIErr(ctx, err), r.URL)
@@ -710,7 +704,7 @@ func (a adminAPIHandlers) HealHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	hip, errCode := extractHealInitParams(mux.Vars(r), r.URL.Query(), r.Body)
+	hip, errCode := extractHealInitParams(urlVars(r), r.URL.Query(), r.Body)
 	if errCode != ErrNone {
 		writeErrorResponseJSON(ctx, w, errorCodes.ToAPIErr(errCode), r.URL)
 		return

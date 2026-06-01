@@ -34,7 +34,6 @@ import (
 	"sync"
 
 	"github.com/google/uuid"
-	"github.com/gorilla/mux"
 
 	"github.com/minio/minio-go/v7/pkg/set"
 	"github.com/minio/minio-go/v7/pkg/tags"
@@ -65,11 +64,16 @@ const (
 // - Check if a bucket has an entry in etcd backend
 // -- If no, make an entry
 // -- If yes, check if the entry matches local IP check if we
-//    need to update the entry then proceed to update
+//
+//	need to update the entry then proceed to update
+//
 // -- If yes, check if the IP of entry matches local IP.
-//    This means entry is for this instance.
+//
+//	This means entry is for this instance.
+//
 // -- If IP of the entry doesn't match, this means entry is
-//    for another instance. Log an error to console.
+//
+//	for another instance. Log an error to console.
 func initFederatorBackend(buckets []BucketInfo, objLayer ObjectLayer) {
 	if len(buckets) == 0 {
 		return
@@ -182,8 +186,7 @@ func (api objectAPIHandlers) GetBucketLocationHandler(w http.ResponseWriter, r *
 
 	defer logger.AuditLog(ctx, w, r, mustGetClaimsFromToken(r))
 
-	vars := mux.Vars(r)
-	bucket := vars["bucket"]
+	bucket := urlVar(r, "bucket")
 
 	objectAPI := api.ObjectAPI()
 	if objectAPI == nil {
@@ -224,14 +227,12 @@ func (api objectAPIHandlers) GetBucketLocationHandler(w http.ResponseWriter, r *
 // using the Initiate Multipart Upload request, but has not yet been
 // completed or aborted. This operation returns at most 1,000 multipart
 // uploads in the response.
-//
 func (api objectAPIHandlers) ListMultipartUploadsHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := newContext(r, w, "ListMultipartUploads")
 
 	defer logger.AuditLog(ctx, w, r, mustGetClaimsFromToken(r))
 
-	vars := mux.Vars(r)
-	bucket := vars["bucket"]
+	bucket := urlVar(r, "bucket")
 
 	objectAPI := api.ObjectAPI()
 	if objectAPI == nil {
@@ -380,8 +381,7 @@ func (api objectAPIHandlers) DeleteMultipleObjectsHandler(w http.ResponseWriter,
 
 	defer logger.AuditLog(ctx, w, r, mustGetClaimsFromToken(r))
 
-	vars := mux.Vars(r)
-	bucket := vars["bucket"]
+	bucket := urlVar(r, "bucket")
 
 	objectAPI := api.ObjectAPI()
 	if objectAPI == nil {
@@ -658,8 +658,7 @@ func (api objectAPIHandlers) PutBucketHandler(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	vars := mux.Vars(r)
-	bucket := vars["bucket"]
+	bucket := urlVar(r, "bucket")
 
 	objectLockEnabled := false
 	if vs, found := r.Header[http.CanonicalHeaderKey("x-amz-bucket-object-lock-enabled")]; found {
@@ -801,7 +800,7 @@ func (api objectAPIHandlers) PostPolicyBucketHandler(w http.ResponseWriter, r *h
 		return
 	}
 
-	bucket := mux.Vars(r)["bucket"]
+	bucket := urlVar(r, "bucket")
 
 	// Require Content-Length to be set in the request
 	size := r.ContentLength
@@ -1090,8 +1089,7 @@ func (api objectAPIHandlers) GetBucketPolicyStatusHandler(w http.ResponseWriter,
 
 	defer logger.AuditLog(ctx, w, r, mustGetClaimsFromToken(r))
 
-	vars := mux.Vars(r)
-	bucket := vars["bucket"]
+	bucket := urlVar(r, "bucket")
 
 	objectAPI := api.ObjectAPI()
 	if objectAPI == nil {
@@ -1152,8 +1150,7 @@ func (api objectAPIHandlers) HeadBucketHandler(w http.ResponseWriter, r *http.Re
 
 	defer logger.AuditLog(ctx, w, r, mustGetClaimsFromToken(r))
 
-	vars := mux.Vars(r)
-	bucket := vars["bucket"]
+	bucket := urlVar(r, "bucket")
 
 	objectAPI := api.ObjectAPI()
 	if objectAPI == nil {
@@ -1182,8 +1179,7 @@ func (api objectAPIHandlers) DeleteBucketHandler(w http.ResponseWriter, r *http.
 
 	defer logger.AuditLog(ctx, w, r, mustGetClaimsFromToken(r))
 
-	vars := mux.Vars(r)
-	bucket := vars["bucket"]
+	bucket := urlVar(r, "bucket")
 
 	objectAPI := api.ObjectAPI()
 	if objectAPI == nil {
@@ -1270,8 +1266,7 @@ func (api objectAPIHandlers) PutBucketObjectLockConfigHandler(w http.ResponseWri
 
 	defer logger.AuditLog(ctx, w, r, mustGetClaimsFromToken(r))
 
-	vars := mux.Vars(r)
-	bucket := vars["bucket"]
+	bucket := urlVar(r, "bucket")
 
 	objectAPI := api.ObjectAPI()
 	if objectAPI == nil {
@@ -1326,8 +1321,7 @@ func (api objectAPIHandlers) GetBucketObjectLockConfigHandler(w http.ResponseWri
 
 	defer logger.AuditLog(ctx, w, r, mustGetClaimsFromToken(r))
 
-	vars := mux.Vars(r)
-	bucket := vars["bucket"]
+	bucket := urlVar(r, "bucket")
 
 	objectAPI := api.ObjectAPI()
 	if objectAPI == nil {
@@ -1364,8 +1358,7 @@ func (api objectAPIHandlers) PutBucketTaggingHandler(w http.ResponseWriter, r *h
 
 	defer logger.AuditLog(ctx, w, r, mustGetClaimsFromToken(r))
 
-	vars := mux.Vars(r)
-	bucket := vars["bucket"]
+	bucket := urlVar(r, "bucket")
 
 	objectAPI := api.ObjectAPI()
 	if objectAPI == nil {
@@ -1408,8 +1401,7 @@ func (api objectAPIHandlers) GetBucketTaggingHandler(w http.ResponseWriter, r *h
 
 	defer logger.AuditLog(ctx, w, r, mustGetClaimsFromToken(r))
 
-	vars := mux.Vars(r)
-	bucket := vars["bucket"]
+	bucket := urlVar(r, "bucket")
 
 	objectAPI := api.ObjectAPI()
 	if objectAPI == nil {
@@ -1446,8 +1438,7 @@ func (api objectAPIHandlers) DeleteBucketTaggingHandler(w http.ResponseWriter, r
 
 	defer logger.AuditLog(ctx, w, r, mustGetClaimsFromToken(r))
 
-	vars := mux.Vars(r)
-	bucket := vars["bucket"]
+	bucket := urlVar(r, "bucket")
 
 	objectAPI := api.ObjectAPI()
 	if objectAPI == nil {
@@ -1476,8 +1467,7 @@ func (api objectAPIHandlers) PutBucketReplicationConfigHandler(w http.ResponseWr
 	ctx := newContext(r, w, "PutBucketReplicationConfig")
 	defer logger.AuditLog(ctx, w, r, mustGetClaimsFromToken(r))
 
-	vars := mux.Vars(r)
-	bucket := vars["bucket"]
+	bucket := urlVar(r, "bucket")
 	objectAPI := api.ObjectAPI()
 	if objectAPI == nil {
 		writeErrorResponse(ctx, w, errorCodes.ToAPIErr(ErrServerNotInitialized), r.URL, guessIsBrowserReq(r))
@@ -1540,8 +1530,7 @@ func (api objectAPIHandlers) GetBucketReplicationConfigHandler(w http.ResponseWr
 
 	defer logger.AuditLog(ctx, w, r, mustGetClaimsFromToken(r))
 
-	vars := mux.Vars(r)
-	bucket := vars["bucket"]
+	bucket := urlVar(r, "bucket")
 
 	objectAPI := api.ObjectAPI()
 	if objectAPI == nil {
@@ -1580,8 +1569,7 @@ func (api objectAPIHandlers) GetBucketReplicationConfigHandler(w http.ResponseWr
 func (api objectAPIHandlers) DeleteBucketReplicationConfigHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := newContext(r, w, "DeleteBucketReplicationConfig")
 	defer logger.AuditLog(ctx, w, r, mustGetClaimsFromToken(r))
-	vars := mux.Vars(r)
-	bucket := vars["bucket"]
+	bucket := urlVar(r, "bucket")
 
 	objectAPI := api.ObjectAPI()
 	if objectAPI == nil {
@@ -1615,8 +1603,7 @@ func (api objectAPIHandlers) GetBucketReplicationMetricsHandler(w http.ResponseW
 
 	defer logger.AuditLog(ctx, w, r, mustGetClaimsFromToken(r))
 
-	vars := mux.Vars(r)
-	bucket := vars["bucket"]
+	bucket := urlVar(r, "bucket")
 
 	objectAPI := api.ObjectAPI()
 	if objectAPI == nil {

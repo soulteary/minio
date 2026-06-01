@@ -41,7 +41,6 @@ import (
 	"time"
 
 	humanize "github.com/dustin/go-humanize"
-	"github.com/gorilla/mux"
 	xhttp "github.com/minio/minio/cmd/http"
 	"github.com/minio/minio/cmd/logger"
 	"github.com/minio/minio/cmd/rest"
@@ -150,7 +149,7 @@ func hasContentMD5(h http.Header) bool {
 	return ok
 }
 
-/// http://docs.aws.amazon.com/AmazonS3/latest/dev/UploadingObjects.html
+// / http://docs.aws.amazon.com/AmazonS3/latest/dev/UploadingObjects.html
 const (
 	// Maximum object size per PUT request is 5TB.
 	// This is a divergence from S3 limit on purpose to support
@@ -771,10 +770,9 @@ func likelyUnescapeGeneric(p string, escapeFn func(string) (string, error)) stri
 
 // Returns context with ReqInfo details set in the context.
 func newContext(r *http.Request, w http.ResponseWriter, api string) context.Context {
-	vars := mux.Vars(r)
-	bucket := vars["bucket"]
-	object := likelyUnescapeGeneric(vars["object"], url.PathUnescape)
-	prefix := likelyUnescapeGeneric(vars["prefix"], url.QueryUnescape)
+	bucket := urlVar(r, "bucket")
+	object := likelyUnescapeGeneric(urlVar(r, "object"), url.PathUnescape)
+	prefix := likelyUnescapeGeneric(urlVar(r, "prefix"), url.QueryUnescape)
 	if prefix != "" {
 		object = prefix
 	}

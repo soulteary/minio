@@ -21,6 +21,7 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/minio/minio/cmd/logger"
 	"github.com/prometheus/client_golang/prometheus"
@@ -173,6 +174,28 @@ func (st *HTTPStats) toServerHTTPStats() ServerHTTPStats {
 		APIStats: st.totalS3Canceled.Load(),
 	}
 	return serverStats
+}
+
+// Update statistics from fiber http request and response data
+func (st *HTTPStats) updateStatsFiber(api string, path string, statusCode int, latency time.Duration) {
+	successReq := statusCode >= 200 && statusCode < 300
+
+	if !strings.HasSuffix(path, prometheusMetricsPathLegacy) ||
+		!strings.HasSuffix(path, prometheusMetricsV2ClusterPath) ||
+		!strings.HasSuffix(path, prometheusMetricsV2NodePath) {
+		st.totalS3Requests.Inc(api)
+		if !successReq {
+			switch statusCode {
+			case 0:
+			case 499:
+				st.totalS3Canceled.Inc(api)
+			default:
+				st.totalS3Errors.Inc(api)
+			}
+		}
+	}
+
+	httpRequestsDuration.With(prometheus.Labels{"api": api}).Observe(latency.Seconds())
 }
 
 // Update statistics from http request and response data

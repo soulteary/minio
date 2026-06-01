@@ -21,7 +21,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/gorilla/mux"
 	"github.com/minio/minio/cmd/logger"
 	policy "github.com/minio/minio/pkg/bucket/policy"
 	"github.com/minio/minio/pkg/event"
@@ -49,8 +48,7 @@ func (api objectAPIHandlers) ListenNotificationHandler(w http.ResponseWriter, r 
 		return
 	}
 
-	vars := mux.Vars(r)
-	bucketName := vars["bucket"]
+	bucketName := urlVar(r, "bucket")
 
 	if bucketName == "" {
 		if s3Error := checkRequestAuthType(ctx, r, policy.ListenNotificationAction, bucketName, ""); s3Error != ErrNone {

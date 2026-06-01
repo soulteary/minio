@@ -28,7 +28,6 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/gorilla/mux"
 	"github.com/minio/minio/pkg/auth"
 	"github.com/minio/minio/pkg/madmin"
 )
@@ -38,7 +37,7 @@ import (
 type adminErasureTestBed struct {
 	erasureDirs []string
 	objLayer    ObjectLayer
-	router      *mux.Router
+	router      http.Handler
 }
 
 // prepareAdminErasureTestBed - helper function that setups a single-node
@@ -73,13 +72,13 @@ func prepareAdminErasureTestBed(ctx context.Context) (*adminErasureTestBed, erro
 	initAllSubsystems(ctx, objLayer)
 
 	// Setup admin mgmt REST API handlers.
-	adminRouter := mux.NewRouter()
-	registerAdminRouter(adminRouter, true, true)
+	app := newFiberApp()
+	registerAdminRouterFiber(app, true, true)
 
 	return &adminErasureTestBed{
 		erasureDirs: erasureDirs,
 		objLayer:    objLayer,
-		router:      adminRouter,
+		router:      fiberHTTPTestHandler(app),
 	}, nil
 }
 

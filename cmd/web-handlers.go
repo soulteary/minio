@@ -33,7 +33,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gorilla/mux"
 	"github.com/klauspost/compress/zip"
 	"github.com/minio/minio-go/v7"
 	miniogo "github.com/minio/minio-go/v7"
@@ -618,14 +617,14 @@ func (web *webAPIHandlers) ListObjects(r *http.Request, args *ListObjectsArgs, r
 
 // RemoveObjectArgs - args to remove an object, JSON will look like.
 //
-// {
-//     "bucketname": "testbucket",
-//     "objects": [
-//         "photos/hawaii/",
-//         "photos/maldives/",
-//         "photos/sanjose.jpg"
-//     ]
-// }
+//	{
+//	    "bucketname": "testbucket",
+//	    "objects": [
+//	        "photos/hawaii/",
+//	        "photos/maldives/",
+//	        "photos/sanjose.jpg"
+//	    ]
+//	}
 type RemoveObjectArgs struct {
 	Objects    []string `json:"objects"`    // Contains objects, prefixes.
 	BucketName string   `json:"bucketname"` // Contains bucket name.
@@ -1119,9 +1118,8 @@ func (web *webAPIHandlers) Upload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	vars := mux.Vars(r)
-	bucket := vars["bucket"]
-	object, err := unescapePath(vars["object"])
+	bucket := urlVar(r, "bucket")
+	object, err := unescapePath(urlVar(r, "object"))
 	if err != nil {
 		writeWebErrorResponse(w, err)
 		return
@@ -1367,10 +1365,8 @@ func (web *webAPIHandlers) Download(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	vars := mux.Vars(r)
-
-	bucket := vars["bucket"]
-	object, err := unescapePath(vars["object"])
+	bucket := urlVar(r, "bucket")
+	object, err := unescapePath(urlVar(r, "object"))
 	if err != nil {
 		writeWebErrorResponse(w, err)
 		return

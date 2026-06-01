@@ -25,7 +25,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/gorilla/mux"
 	"github.com/minio/minio/cmd/config"
 	"github.com/minio/minio/cmd/config/cache"
 	"github.com/minio/minio/cmd/config/etcd"
@@ -193,9 +192,8 @@ func (a adminAPIHandlers) GetConfigKVHandler(w http.ResponseWriter, r *http.Requ
 		}
 	}
 
-	vars := mux.Vars(r)
 	var buf = &bytes.Buffer{}
-	cw := config.NewConfigWriteTo(cfg, vars["key"])
+	cw := config.NewConfigWriteTo(cfg, urlVar(r, "key"))
 	if _, err := cw.WriteTo(buf); err != nil {
 		writeErrorResponseJSON(ctx, w, toAdminAPIErr(ctx, err), r.URL)
 		return
@@ -221,8 +219,7 @@ func (a adminAPIHandlers) ClearConfigHistoryKVHandler(w http.ResponseWriter, r *
 		return
 	}
 
-	vars := mux.Vars(r)
-	restoreID := vars["restoreId"]
+	restoreID := urlVar(r, "restoreId")
 	if restoreID == "" {
 		writeErrorResponseJSON(ctx, w, errorCodes.ToAPIErr(ErrInvalidRequest), r.URL)
 		return
@@ -258,8 +255,7 @@ func (a adminAPIHandlers) RestoreConfigHistoryKVHandler(w http.ResponseWriter, r
 		return
 	}
 
-	vars := mux.Vars(r)
-	restoreID := vars["restoreId"]
+	restoreID := urlVar(r, "restoreId")
 	if restoreID == "" {
 		writeErrorResponseJSON(ctx, w, errorCodes.ToAPIErr(ErrInvalidRequest), r.URL)
 		return
@@ -306,8 +302,7 @@ func (a adminAPIHandlers) ListConfigHistoryKVHandler(w http.ResponseWriter, r *h
 		return
 	}
 
-	vars := mux.Vars(r)
-	count, err := strconv.Atoi(vars["count"])
+	count, err := strconv.Atoi(urlVar(r, "count"))
 	if err != nil {
 		writeErrorResponseJSON(ctx, w, toAdminAPIErr(ctx, err), r.URL)
 		return
@@ -346,10 +341,8 @@ func (a adminAPIHandlers) HelpConfigKVHandler(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	vars := mux.Vars(r)
-
-	subSys := vars["subSys"]
-	key := vars["key"]
+	subSys := urlVar(r, "subSys")
+	key := urlVar(r, "key")
 
 	_, envOnly := r.URL.Query()["env"]
 

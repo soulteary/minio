@@ -423,7 +423,6 @@ func migrateV5ToV6() error {
 	srvConfig.Logger.File = cv5.Logger.File
 	srvConfig.Logger.Syslog = cv5.Logger.Syslog
 
-
 	if cv5.Logger.ElasticSearch.URL != "" {
 		var url *xnet.URL
 		url, err = xnet.ParseHTTPURL(cv5.Logger.ElasticSearch.URL)

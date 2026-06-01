@@ -25,7 +25,6 @@ import (
 	"net/http"
 	"sort"
 
-	"github.com/gorilla/mux"
 	"github.com/minio/minio/cmd/config/dns"
 	"github.com/minio/minio/cmd/logger"
 	"github.com/minio/minio/pkg/auth"
@@ -65,8 +64,7 @@ func (a adminAPIHandlers) RemoveUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	vars := mux.Vars(r)
-	accessKey := vars["accessKey"]
+	accessKey := urlVar(r, "accessKey")
 
 	ok, _, err := globalIAMSys.IsTempUser(accessKey)
 	if err != nil {
@@ -132,8 +130,7 @@ func (a adminAPIHandlers) GetUserInfo(w http.ResponseWriter, r *http.Request) {
 
 	defer logger.AuditLog(ctx, w, r, mustGetClaimsFromToken(r))
 
-	vars := mux.Vars(r)
-	name := vars["accessKey"]
+	name := urlVar(r, "accessKey")
 
 	// Get current object layer instance.
 	objectAPI := newObjectLayerFn()
@@ -239,8 +236,7 @@ func (a adminAPIHandlers) GetGroup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	vars := mux.Vars(r)
-	group := vars["group"]
+	group := urlVar(r, "group")
 
 	gdesc, err := globalIAMSys.GetGroupDescription(group)
 	if err != nil {
@@ -294,9 +290,8 @@ func (a adminAPIHandlers) SetGroupStatus(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	vars := mux.Vars(r)
-	group := vars["group"]
-	status := vars["status"]
+	group := urlVar(r, "group")
+	status := urlVar(r, "status")
 
 	var err error
 	if status == statusEnabled {
@@ -331,9 +326,8 @@ func (a adminAPIHandlers) SetUserStatus(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	vars := mux.Vars(r)
-	accessKey := vars["accessKey"]
-	status := vars["status"]
+	accessKey := urlVar(r, "accessKey")
+	status := urlVar(r, "status")
 
 	// This API is not allowed to lookup accessKey user status
 	if accessKey == globalActiveCred.AccessKey {
@@ -361,8 +355,7 @@ func (a adminAPIHandlers) AddUser(w http.ResponseWriter, r *http.Request) {
 
 	defer logger.AuditLog(ctx, w, r, mustGetClaimsFromToken(r))
 
-	vars := mux.Vars(r)
-	accessKey := vars["accessKey"]
+	accessKey := urlVar(r, "accessKey")
 
 	// Get current object layer instance.
 	objectAPI := newObjectLayerFn()
@@ -592,7 +585,7 @@ func (a adminAPIHandlers) UpdateServiceAccount(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	accessKey := mux.Vars(r)["accessKey"]
+	accessKey := urlVar(r, "accessKey")
 	if accessKey == "" {
 		writeErrorResponseJSON(ctx, w, errorCodes.ToAPIErr(ErrInvalidRequest), r.URL)
 		return
@@ -684,7 +677,7 @@ func (a adminAPIHandlers) InfoServiceAccount(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	accessKey := mux.Vars(r)["accessKey"]
+	accessKey := urlVar(r, "accessKey")
 	if accessKey == "" {
 		writeErrorResponseJSON(ctx, w, errorCodes.ToAPIErr(ErrInvalidRequest), r.URL)
 		return
@@ -861,7 +854,7 @@ func (a adminAPIHandlers) DeleteServiceAccount(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	serviceAccount := mux.Vars(r)["accessKey"]
+	serviceAccount := urlVar(r, "accessKey")
 	if serviceAccount == "" {
 		writeErrorResponseJSON(ctx, w, errorCodes.ToAPIErr(ErrAdminInvalidArgument), r.URL)
 		return
@@ -1060,7 +1053,7 @@ func (a adminAPIHandlers) InfoCannedPolicyV2(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	policy, err := globalIAMSys.InfoPolicy(mux.Vars(r)["name"])
+	policy, err := globalIAMSys.InfoPolicy(urlVar(r, "name"))
 	if err != nil {
 		writeErrorResponseJSON(ctx, w, toAdminAPIErr(ctx, err), r.URL)
 		return
@@ -1087,7 +1080,7 @@ func (a adminAPIHandlers) InfoCannedPolicy(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	policy, err := globalIAMSys.InfoPolicy(mux.Vars(r)["name"])
+	policy, err := globalIAMSys.InfoPolicy(urlVar(r, "name"))
 	if err != nil {
 		writeErrorResponseJSON(ctx, w, toAdminAPIErr(ctx, err), r.URL)
 		return
@@ -1179,8 +1172,7 @@ func (a adminAPIHandlers) RemoveCannedPolicy(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	vars := mux.Vars(r)
-	policyName := vars["name"]
+	policyName := urlVar(r, "name")
 
 	if err := globalIAMSys.DeletePolicy(policyName); err != nil {
 		writeErrorResponseJSON(ctx, w, toAdminAPIErr(ctx, err), r.URL)
@@ -1207,8 +1199,7 @@ func (a adminAPIHandlers) AddCannedPolicy(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	vars := mux.Vars(r)
-	policyName := vars["name"]
+	policyName := urlVar(r, "name")
 
 	// Error out if Content-Length is missing.
 	if r.ContentLength <= 0 {
@@ -1259,10 +1250,9 @@ func (a adminAPIHandlers) SetPolicyForUserOrGroup(w http.ResponseWriter, r *http
 		return
 	}
 
-	vars := mux.Vars(r)
-	policyName := vars["policyName"]
-	entityName := vars["userOrGroup"]
-	isGroup := vars["isGroup"] == "true"
+	policyName := urlVar(r, "policyName")
+	entityName := urlVar(r, "userOrGroup")
+	isGroup := urlVar(r, "isGroup") == "true"
 
 	if !isGroup {
 		ok, _, err := globalIAMSys.IsTempUser(entityName)

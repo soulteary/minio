@@ -25,7 +25,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/gorilla/mux"
 	"github.com/minio/minio/pkg/dsync"
 )
 
@@ -266,24 +265,4 @@ func lockMaintenance(ctx context.Context) {
 			globalLockServer.expireOldLocks(lockValidityDuration)
 		}
 	}
-}
-
-// registerLockRESTHandlers - register lock rest router.
-func registerLockRESTHandlers(router *mux.Router) {
-	lockServer := &lockRESTServer{
-		ll: newLocker(),
-	}
-
-	subrouter := router.PathPrefix(lockRESTPrefix).Subrouter()
-	subrouter.Methods(http.MethodPost).Path(lockRESTVersionPrefix + lockRESTMethodHealth).HandlerFunc(httpTraceHdrs(lockServer.HealthHandler))
-	subrouter.Methods(http.MethodPost).Path(lockRESTVersionPrefix + lockRESTMethodRefresh).HandlerFunc(httpTraceHdrs(lockServer.RefreshHandler))
-	subrouter.Methods(http.MethodPost).Path(lockRESTVersionPrefix + lockRESTMethodLock).HandlerFunc(httpTraceHdrs(lockServer.LockHandler))
-	subrouter.Methods(http.MethodPost).Path(lockRESTVersionPrefix + lockRESTMethodRLock).HandlerFunc(httpTraceHdrs(lockServer.RLockHandler))
-	subrouter.Methods(http.MethodPost).Path(lockRESTVersionPrefix + lockRESTMethodUnlock).HandlerFunc(httpTraceHdrs(lockServer.UnlockHandler))
-	subrouter.Methods(http.MethodPost).Path(lockRESTVersionPrefix + lockRESTMethodRUnlock).HandlerFunc(httpTraceHdrs(lockServer.RUnlockHandler))
-	subrouter.Methods(http.MethodPost).Path(lockRESTVersionPrefix + lockRESTMethodForceUnlock).HandlerFunc(httpTraceAll(lockServer.ForceUnlockHandler))
-
-	globalLockServer = lockServer.ll
-
-	go lockMaintenance(GlobalContext)
 }

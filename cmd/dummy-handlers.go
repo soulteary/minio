@@ -19,7 +19,6 @@ package cmd
 import (
 	"net/http"
 
-	"github.com/gorilla/mux"
 	"github.com/minio/minio/cmd/logger"
 	"github.com/minio/minio/pkg/bucket/policy"
 )
@@ -34,8 +33,7 @@ func (api objectAPIHandlers) GetBucketWebsiteHandler(w http.ResponseWriter, r *h
 
 	defer logger.AuditLog(ctx, w, r, mustGetClaimsFromToken(r))
 
-	vars := mux.Vars(r)
-	bucket := vars["bucket"]
+	bucket := urlVar(r, "bucket")
 
 	objAPI := api.ObjectAPI()
 	if objAPI == nil {
@@ -66,8 +64,7 @@ func (api objectAPIHandlers) GetBucketAccelerateHandler(w http.ResponseWriter, r
 
 	defer logger.AuditLog(ctx, w, r, mustGetClaimsFromToken(r))
 
-	vars := mux.Vars(r)
-	bucket := vars["bucket"]
+	bucket := urlVar(r, "bucket")
 
 	objAPI := api.ObjectAPI()
 	if objAPI == nil {
@@ -99,8 +96,7 @@ func (api objectAPIHandlers) GetBucketRequestPaymentHandler(w http.ResponseWrite
 
 	defer logger.AuditLog(ctx, w, r, mustGetClaimsFromToken(r))
 
-	vars := mux.Vars(r)
-	bucket := vars["bucket"]
+	bucket := urlVar(r, "bucket")
 
 	objAPI := api.ObjectAPI()
 	if objAPI == nil {
@@ -133,8 +129,7 @@ func (api objectAPIHandlers) GetBucketLoggingHandler(w http.ResponseWriter, r *h
 
 	defer logger.AuditLog(ctx, w, r, mustGetClaimsFromToken(r))
 
-	vars := mux.Vars(r)
-	bucket := vars["bucket"]
+	bucket := urlVar(r, "bucket")
 
 	objAPI := api.ObjectAPI()
 	if objAPI == nil {
@@ -172,8 +167,7 @@ func (api objectAPIHandlers) GetBucketCorsHandler(w http.ResponseWriter, r *http
 
 	defer logger.AuditLog(ctx, w, r, mustGetClaimsFromToken(r))
 
-	vars := mux.Vars(r)
-	bucket := vars["bucket"]
+	bucket := urlVar(r, "bucket")
 
 	objAPI := api.ObjectAPI()
 	if objAPI == nil {

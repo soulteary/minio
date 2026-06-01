@@ -24,7 +24,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/gorilla/mux"
+	"github.com/gofiber/fiber/v3/middleware/adaptor"
 	"github.com/minio/minio/cmd/config"
 	xnet "github.com/minio/minio/pkg/net"
 )
@@ -292,9 +292,8 @@ func testStorageAPIReadFile(t *testing.T, storage StorageAPI) {
 		{"foo", "yourobject", 0, nil, true},
 	}
 
-	result := make([]byte, 100)
 	for i, testCase := range testCases {
-		result = result[testCase.offset:3]
+		result := make([]byte, len(testCase.expectedResult))
 		_, err := storage.ReadFile(context.Background(), testCase.volumeName, testCase.objectName, testCase.offset, result, nil)
 		expectErr := (err != nil)
 
@@ -426,8 +425,8 @@ func newStorageRESTHTTPServerClient(t *testing.T) (*httptest.Server, *storageRES
 		t.Fatalf("unexpected error %v", err)
 	}
 
-	router := mux.NewRouter()
-	httpServer := httptest.NewServer(router)
+	app := newFiberApp()
+	httpServer := httptest.NewServer(adaptor.FiberApp(app))
 
 	url, err := xnet.ParseHTTPURL(httpServer.URL)
 	if err != nil {
@@ -446,7 +445,7 @@ func newStorageRESTHTTPServerClient(t *testing.T) (*httptest.Server, *storageRES
 		t.Fatalf("UpdateIsLocal failed %v", err)
 	}
 
-	registerStorageRESTHandlers(router, []PoolEndpoints{{
+	registerStorageRESTHandlersFiber(app, []PoolEndpoints{{
 		Endpoints: Endpoints{endpoint},
 	}})
 

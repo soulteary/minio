@@ -22,7 +22,6 @@ import (
 	"net/http"
 	"reflect"
 
-	"github.com/gorilla/mux"
 	"github.com/minio/minio/cmd/logger"
 	"github.com/minio/minio/pkg/bucket/policy"
 	"github.com/minio/minio/pkg/event"
@@ -41,8 +40,7 @@ func (api objectAPIHandlers) GetBucketNotificationHandler(w http.ResponseWriter,
 
 	defer logger.AuditLog(ctx, w, r, mustGetClaimsFromToken(r))
 
-	vars := mux.Vars(r)
-	bucketName := vars["bucket"]
+	bucketName := urlVar(r, "bucket")
 
 	objAPI := api.ObjectAPI()
 	if objAPI == nil {
@@ -124,8 +122,7 @@ func (api objectAPIHandlers) PutBucketNotificationHandler(w http.ResponseWriter,
 		return
 	}
 
-	vars := mux.Vars(r)
-	bucketName := vars["bucket"]
+	bucketName := urlVar(r, "bucket")
 
 	if s3Error := checkRequestAuthType(ctx, r, policy.PutBucketNotificationAction, bucketName, ""); s3Error != ErrNone {
 		writeErrorResponse(ctx, w, errorCodes.ToAPIErr(s3Error), r.URL, guessIsBrowserReq(r))

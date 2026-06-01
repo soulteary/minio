@@ -26,7 +26,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/gorilla/mux"
 	"github.com/minio/minio/cmd/logger"
 	xioutil "github.com/minio/minio/pkg/ioutil"
 )
@@ -301,17 +300,16 @@ func (s *storageRESTServer) WalkDirHandler(w http.ResponseWriter, r *http.Reques
 	if !s.IsValid(w, r) {
 		return
 	}
-	vars := mux.Vars(r)
-	volume := vars[storageRESTVolume]
-	dirPath := vars[storageRESTDirPath]
-	recursive, err := strconv.ParseBool(vars[storageRESTRecursive])
+	volume := r.URL.Query().Get(storageRESTVolume)
+	dirPath := r.URL.Query().Get(storageRESTDirPath)
+	recursive, err := strconv.ParseBool(r.URL.Query().Get(storageRESTRecursive))
 	if err != nil {
 		s.writeErrorResponse(w, err)
 		return
 	}
 
 	var reportNotFound bool
-	if v := vars[storageRESTReportNotFound]; v != "" {
+	if v := r.URL.Query().Get(storageRESTReportNotFound); v != "" {
 		reportNotFound, err = strconv.ParseBool(v)
 		if err != nil {
 			s.writeErrorResponse(w, err)

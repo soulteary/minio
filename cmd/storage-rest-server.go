@@ -27,7 +27,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os/user"
-	"path"
 	"strconv"
 	"strings"
 	"time"
@@ -35,7 +34,6 @@ import (
 	"github.com/tinylib/msgp/msgp"
 
 	jwtreq "github.com/dgrijalva/jwt-go/request"
-	"github.com/gorilla/mux"
 	"github.com/minio/minio/cmd/config"
 	xhttp "github.com/minio/minio/cmd/http"
 	xjwt "github.com/minio/minio/cmd/jwt"
@@ -186,8 +184,7 @@ func (s *storageRESTServer) MakeVolHandler(w http.ResponseWriter, r *http.Reques
 	if !s.IsValid(w, r) {
 		return
 	}
-	vars := mux.Vars(r)
-	volume := vars[storageRESTVolume]
+	volume := r.URL.Query().Get(storageRESTVolume)
 	err := s.storage.MakeVol(r.Context(), volume)
 	if err != nil {
 		s.writeErrorResponse(w, err)
@@ -199,8 +196,7 @@ func (s *storageRESTServer) MakeVolBulkHandler(w http.ResponseWriter, r *http.Re
 	if !s.IsValid(w, r) {
 		return
 	}
-	vars := mux.Vars(r)
-	volumes := strings.Split(vars[storageRESTVolumes], ",")
+	volumes := strings.Split(r.URL.Query().Get(storageRESTVolumes), ",")
 	err := s.storage.MakeVolBulk(r.Context(), volumes...)
 	if err != nil {
 		s.writeErrorResponse(w, err)
@@ -226,8 +222,7 @@ func (s *storageRESTServer) StatVolHandler(w http.ResponseWriter, r *http.Reques
 	if !s.IsValid(w, r) {
 		return
 	}
-	vars := mux.Vars(r)
-	volume := vars[storageRESTVolume]
+	volume := r.URL.Query().Get(storageRESTVolume)
 	info, err := s.storage.StatVol(r.Context(), volume)
 	if err != nil {
 		s.writeErrorResponse(w, err)
@@ -242,9 +237,8 @@ func (s *storageRESTServer) DeleteVolHandler(w http.ResponseWriter, r *http.Requ
 	if !s.IsValid(w, r) {
 		return
 	}
-	vars := mux.Vars(r)
-	volume := vars[storageRESTVolume]
-	forceDelete := vars[storageRESTForceDelete] == "true"
+	volume := r.URL.Query().Get(storageRESTVolume)
+	forceDelete := r.URL.Query().Get(storageRESTForceDelete) == "true"
 	err := s.storage.DeleteVol(r.Context(), volume, forceDelete)
 	if err != nil {
 		s.writeErrorResponse(w, err)
@@ -256,9 +250,8 @@ func (s *storageRESTServer) AppendFileHandler(w http.ResponseWriter, r *http.Req
 	if !s.IsValid(w, r) {
 		return
 	}
-	vars := mux.Vars(r)
-	volume := vars[storageRESTVolume]
-	filePath := vars[storageRESTFilePath]
+	volume := r.URL.Query().Get(storageRESTVolume)
+	filePath := r.URL.Query().Get(storageRESTFilePath)
 
 	buf := make([]byte, r.ContentLength)
 	_, err := io.ReadFull(r.Body, buf)
@@ -277,11 +270,10 @@ func (s *storageRESTServer) CreateFileHandler(w http.ResponseWriter, r *http.Req
 	if !s.IsValid(w, r) {
 		return
 	}
-	vars := mux.Vars(r)
-	volume := vars[storageRESTVolume]
-	filePath := vars[storageRESTFilePath]
+	volume := r.URL.Query().Get(storageRESTVolume)
+	filePath := r.URL.Query().Get(storageRESTFilePath)
 
-	fileSizeStr := vars[storageRESTLength]
+	fileSizeStr := r.URL.Query().Get(storageRESTLength)
 	fileSize, err := strconv.Atoi(fileSizeStr)
 	if err != nil {
 		s.writeErrorResponse(w, err)
@@ -297,10 +289,9 @@ func (s *storageRESTServer) DeleteVersionHandler(w http.ResponseWriter, r *http.
 	if !s.IsValid(w, r) {
 		return
 	}
-	vars := mux.Vars(r)
-	volume := vars[storageRESTVolume]
-	filePath := vars[storageRESTFilePath]
-	forceDelMarker, err := strconv.ParseBool(vars[storageRESTForceDelMarker])
+	volume := r.URL.Query().Get(storageRESTVolume)
+	filePath := r.URL.Query().Get(storageRESTFilePath)
+	forceDelMarker, err := strconv.ParseBool(r.URL.Query().Get(storageRESTForceDelMarker))
 	if err != nil {
 		s.writeErrorResponse(w, errInvalidArgument)
 		return
@@ -328,11 +319,10 @@ func (s *storageRESTServer) ReadVersionHandler(w http.ResponseWriter, r *http.Re
 	if !s.IsValid(w, r) {
 		return
 	}
-	vars := mux.Vars(r)
-	volume := vars[storageRESTVolume]
-	filePath := vars[storageRESTFilePath]
-	versionID := vars[storageRESTVersionID]
-	readData, err := strconv.ParseBool(vars[storageRESTReadData])
+	volume := r.URL.Query().Get(storageRESTVolume)
+	filePath := r.URL.Query().Get(storageRESTFilePath)
+	versionID := r.URL.Query().Get(storageRESTVersionID)
+	readData, err := strconv.ParseBool(r.URL.Query().Get(storageRESTReadData))
 	if err != nil {
 		s.writeErrorResponse(w, err)
 		return
@@ -352,9 +342,8 @@ func (s *storageRESTServer) WriteMetadataHandler(w http.ResponseWriter, r *http.
 	if !s.IsValid(w, r) {
 		return
 	}
-	vars := mux.Vars(r)
-	volume := vars[storageRESTVolume]
-	filePath := vars[storageRESTFilePath]
+	volume := r.URL.Query().Get(storageRESTVolume)
+	filePath := r.URL.Query().Get(storageRESTFilePath)
 
 	if r.ContentLength < 0 {
 		s.writeErrorResponse(w, errInvalidArgument)
@@ -378,9 +367,8 @@ func (s *storageRESTServer) UpdateMetadataHandler(w http.ResponseWriter, r *http
 	if !s.IsValid(w, r) {
 		return
 	}
-	vars := mux.Vars(r)
-	volume := vars[storageRESTVolume]
-	filePath := vars[storageRESTFilePath]
+	volume := r.URL.Query().Get(storageRESTVolume)
+	filePath := r.URL.Query().Get(storageRESTFilePath)
 
 	if r.ContentLength < 0 {
 		s.writeErrorResponse(w, errInvalidArgument)
@@ -404,9 +392,8 @@ func (s *storageRESTServer) WriteAllHandler(w http.ResponseWriter, r *http.Reque
 	if !s.IsValid(w, r) {
 		return
 	}
-	vars := mux.Vars(r)
-	volume := vars[storageRESTVolume]
-	filePath := vars[storageRESTFilePath]
+	volume := r.URL.Query().Get(storageRESTVolume)
+	filePath := r.URL.Query().Get(storageRESTFilePath)
 
 	if r.ContentLength < 0 {
 		s.writeErrorResponse(w, errInvalidArgument)
@@ -429,9 +416,8 @@ func (s *storageRESTServer) CheckPartsHandler(w http.ResponseWriter, r *http.Req
 	if !s.IsValid(w, r) {
 		return
 	}
-	vars := mux.Vars(r)
-	volume := vars[storageRESTVolume]
-	filePath := vars[storageRESTFilePath]
+	volume := r.URL.Query().Get(storageRESTVolume)
+	filePath := r.URL.Query().Get(storageRESTFilePath)
 
 	if r.ContentLength < 0 {
 		s.writeErrorResponse(w, errInvalidArgument)
@@ -454,9 +440,8 @@ func (s *storageRESTServer) CheckFileHandler(w http.ResponseWriter, r *http.Requ
 	if !s.IsValid(w, r) {
 		return
 	}
-	vars := mux.Vars(r)
-	volume := vars[storageRESTVolume]
-	filePath := vars[storageRESTFilePath]
+	volume := r.URL.Query().Get(storageRESTVolume)
+	filePath := r.URL.Query().Get(storageRESTFilePath)
 
 	if err := s.storage.CheckFile(r.Context(), volume, filePath); err != nil {
 		s.writeErrorResponse(w, err)
@@ -468,9 +453,8 @@ func (s *storageRESTServer) ReadAllHandler(w http.ResponseWriter, r *http.Reques
 	if !s.IsValid(w, r) {
 		return
 	}
-	vars := mux.Vars(r)
-	volume := vars[storageRESTVolume]
-	filePath := vars[storageRESTFilePath]
+	volume := r.URL.Query().Get(storageRESTVolume)
+	filePath := r.URL.Query().Get(storageRESTFilePath)
 
 	buf, err := s.storage.ReadAll(r.Context(), volume, filePath)
 	if err != nil {
@@ -487,15 +471,14 @@ func (s *storageRESTServer) ReadFileHandler(w http.ResponseWriter, r *http.Reque
 	if !s.IsValid(w, r) {
 		return
 	}
-	vars := mux.Vars(r)
-	volume := vars[storageRESTVolume]
-	filePath := vars[storageRESTFilePath]
-	offset, err := strconv.Atoi(vars[storageRESTOffset])
+	volume := r.URL.Query().Get(storageRESTVolume)
+	filePath := r.URL.Query().Get(storageRESTFilePath)
+	offset, err := strconv.Atoi(r.URL.Query().Get(storageRESTOffset))
 	if err != nil {
 		s.writeErrorResponse(w, err)
 		return
 	}
-	length, err := strconv.Atoi(vars[storageRESTLength])
+	length, err := strconv.Atoi(r.URL.Query().Get(storageRESTLength))
 	if err != nil {
 		s.writeErrorResponse(w, err)
 		return
@@ -505,15 +488,15 @@ func (s *storageRESTServer) ReadFileHandler(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	var verifier *BitrotVerifier
-	if vars[storageRESTBitrotAlgo] != "" {
-		hashStr := vars[storageRESTBitrotHash]
+	if r.URL.Query().Get(storageRESTBitrotAlgo) != "" {
+		hashStr := r.URL.Query().Get(storageRESTBitrotHash)
 		var hash []byte
 		hash, err = hex.DecodeString(hashStr)
 		if err != nil {
 			s.writeErrorResponse(w, err)
 			return
 		}
-		verifier = NewBitrotVerifier(BitrotAlgorithmFromString(vars[storageRESTBitrotAlgo]), hash)
+		verifier = NewBitrotVerifier(BitrotAlgorithmFromString(r.URL.Query().Get(storageRESTBitrotAlgo)), hash)
 	}
 	buf := make([]byte, length)
 	_, err = s.storage.ReadFile(r.Context(), volume, filePath, int64(offset), buf, verifier)
@@ -531,15 +514,14 @@ func (s *storageRESTServer) ReadFileStreamHandler(w http.ResponseWriter, r *http
 	if !s.IsValid(w, r) {
 		return
 	}
-	vars := mux.Vars(r)
-	volume := vars[storageRESTVolume]
-	filePath := vars[storageRESTFilePath]
-	offset, err := strconv.Atoi(vars[storageRESTOffset])
+	volume := r.URL.Query().Get(storageRESTVolume)
+	filePath := r.URL.Query().Get(storageRESTFilePath)
+	offset, err := strconv.Atoi(r.URL.Query().Get(storageRESTOffset))
 	if err != nil {
 		s.writeErrorResponse(w, err)
 		return
 	}
-	length, err := strconv.Atoi(vars[storageRESTLength])
+	length, err := strconv.Atoi(r.URL.Query().Get(storageRESTLength))
 	if err != nil {
 		s.writeErrorResponse(w, err)
 		return
@@ -567,10 +549,9 @@ func (s *storageRESTServer) ListDirHandler(w http.ResponseWriter, r *http.Reques
 	if !s.IsValid(w, r) {
 		return
 	}
-	vars := mux.Vars(r)
-	volume := vars[storageRESTVolume]
-	dirPath := vars[storageRESTDirPath]
-	count, err := strconv.Atoi(vars[storageRESTCount])
+	volume := r.URL.Query().Get(storageRESTVolume)
+	dirPath := r.URL.Query().Get(storageRESTDirPath)
+	count, err := strconv.Atoi(r.URL.Query().Get(storageRESTCount))
 	if err != nil {
 		s.writeErrorResponse(w, err)
 		return
@@ -590,10 +571,9 @@ func (s *storageRESTServer) DeleteFileHandler(w http.ResponseWriter, r *http.Req
 	if !s.IsValid(w, r) {
 		return
 	}
-	vars := mux.Vars(r)
-	volume := vars[storageRESTVolume]
-	filePath := vars[storageRESTFilePath]
-	recursive, err := strconv.ParseBool(vars[storageRESTRecursive])
+	volume := r.URL.Query().Get(storageRESTVolume)
+	filePath := r.URL.Query().Get(storageRESTFilePath)
+	recursive, err := strconv.ParseBool(r.URL.Query().Get(storageRESTRecursive))
 	if err != nil {
 		s.writeErrorResponse(w, err)
 		return
@@ -658,11 +638,10 @@ func (s *storageRESTServer) RenameDataHandler(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	vars := mux.Vars(r)
-	srcVolume := vars[storageRESTSrcVolume]
-	srcFilePath := vars[storageRESTSrcPath]
-	dstVolume := vars[storageRESTDstVolume]
-	dstFilePath := vars[storageRESTDstPath]
+	srcVolume := r.URL.Query().Get(storageRESTSrcVolume)
+	srcFilePath := r.URL.Query().Get(storageRESTSrcPath)
+	dstVolume := r.URL.Query().Get(storageRESTDstVolume)
+	dstFilePath := r.URL.Query().Get(storageRESTDstPath)
 
 	if r.ContentLength < 0 {
 		s.writeErrorResponse(w, errInvalidArgument)
@@ -686,11 +665,10 @@ func (s *storageRESTServer) RenameFileHandler(w http.ResponseWriter, r *http.Req
 	if !s.IsValid(w, r) {
 		return
 	}
-	vars := mux.Vars(r)
-	srcVolume := vars[storageRESTSrcVolume]
-	srcFilePath := vars[storageRESTSrcPath]
-	dstVolume := vars[storageRESTDstVolume]
-	dstFilePath := vars[storageRESTDstPath]
+	srcVolume := r.URL.Query().Get(storageRESTSrcVolume)
+	srcFilePath := r.URL.Query().Get(storageRESTSrcPath)
+	dstVolume := r.URL.Query().Get(storageRESTDstVolume)
+	dstFilePath := r.URL.Query().Get(storageRESTDstPath)
 	err := s.storage.RenameFile(r.Context(), srcVolume, srcFilePath, dstVolume, dstFilePath)
 	if err != nil {
 		s.writeErrorResponse(w, err)
@@ -932,9 +910,8 @@ func (s *storageRESTServer) VerifyFileHandler(w http.ResponseWriter, r *http.Req
 	if !s.IsValid(w, r) {
 		return
 	}
-	vars := mux.Vars(r)
-	volume := vars[storageRESTVolume]
-	filePath := vars[storageRESTFilePath]
+	volume := r.URL.Query().Get(storageRESTVolume)
+	filePath := r.URL.Query().Get(storageRESTFilePath)
 
 	if r.ContentLength < 0 {
 		s.writeErrorResponse(w, errInvalidArgument)
@@ -1019,80 +996,6 @@ func logFatalErrs(err error, endpoint Endpoint, exit bool) {
 			logger.LogIf(GlobalContext, fmt.Errorf("disk returned an unexpected error at %s, please investigate - disk will be offline", endpoint))
 		} else {
 			logger.Fatal(err, "Unable to initialize backend")
-		}
-	}
-}
-
-// registerStorageRPCRouter - register storage rpc router.
-func registerStorageRESTHandlers(router *mux.Router, endpointServerPools EndpointServerPools) {
-	for _, ep := range endpointServerPools {
-		for _, endpoint := range ep.Endpoints {
-			if !endpoint.IsLocal {
-				continue
-			}
-			storage, err := newXLStorage(endpoint)
-			if err != nil {
-				// if supported errors don't fail, we proceed to
-				// printing message and moving forward.
-				logFatalErrs(err, endpoint, false)
-			}
-
-			server := &storageRESTServer{storage: storage}
-
-			subrouter := router.PathPrefix(path.Join(storageRESTPrefix, endpoint.Path)).Subrouter()
-
-			subrouter.Methods(http.MethodPost).Path(storageRESTVersionPrefix + storageRESTMethodHealth).HandlerFunc(httpTraceHdrs(server.HealthHandler))
-			subrouter.Methods(http.MethodPost).Path(storageRESTVersionPrefix + storageRESTMethodDiskInfo).HandlerFunc(httpTraceHdrs(server.DiskInfoHandler))
-			subrouter.Methods(http.MethodPost).Path(storageRESTVersionPrefix + storageRESTMethodNSScanner).HandlerFunc(httpTraceHdrs(server.NSScannerHandler))
-			subrouter.Methods(http.MethodPost).Path(storageRESTVersionPrefix + storageRESTMethodMakeVol).HandlerFunc(httpTraceHdrs(server.MakeVolHandler)).Queries(restQueries(storageRESTVolume)...)
-			subrouter.Methods(http.MethodPost).Path(storageRESTVersionPrefix + storageRESTMethodMakeVolBulk).HandlerFunc(httpTraceHdrs(server.MakeVolBulkHandler)).Queries(restQueries(storageRESTVolumes)...)
-			subrouter.Methods(http.MethodPost).Path(storageRESTVersionPrefix + storageRESTMethodStatVol).HandlerFunc(httpTraceHdrs(server.StatVolHandler)).Queries(restQueries(storageRESTVolume)...)
-			subrouter.Methods(http.MethodPost).Path(storageRESTVersionPrefix + storageRESTMethodDeleteVol).HandlerFunc(httpTraceHdrs(server.DeleteVolHandler)).Queries(restQueries(storageRESTVolume)...)
-			subrouter.Methods(http.MethodPost).Path(storageRESTVersionPrefix + storageRESTMethodListVols).HandlerFunc(httpTraceHdrs(server.ListVolsHandler))
-
-			subrouter.Methods(http.MethodPost).Path(storageRESTVersionPrefix + storageRESTMethodAppendFile).HandlerFunc(httpTraceHdrs(server.AppendFileHandler)).
-				Queries(restQueries(storageRESTVolume, storageRESTFilePath)...)
-			subrouter.Methods(http.MethodPost).Path(storageRESTVersionPrefix + storageRESTMethodWriteAll).HandlerFunc(httpTraceHdrs(server.WriteAllHandler)).
-				Queries(restQueries(storageRESTVolume, storageRESTFilePath)...)
-			subrouter.Methods(http.MethodPost).Path(storageRESTVersionPrefix + storageRESTMethodWriteMetadata).HandlerFunc(httpTraceHdrs(server.WriteMetadataHandler)).
-				Queries(restQueries(storageRESTVolume, storageRESTFilePath)...)
-			subrouter.Methods(http.MethodPost).Path(storageRESTVersionPrefix + storageRESTMethodUpdateMetadata).HandlerFunc(httpTraceHdrs(server.UpdateMetadataHandler)).
-				Queries(restQueries(storageRESTVolume, storageRESTFilePath)...)
-			subrouter.Methods(http.MethodPost).Path(storageRESTVersionPrefix + storageRESTMethodDeleteVersion).HandlerFunc(httpTraceHdrs(server.DeleteVersionHandler)).
-				Queries(restQueries(storageRESTVolume, storageRESTFilePath, storageRESTForceDelMarker)...)
-			subrouter.Methods(http.MethodPost).Path(storageRESTVersionPrefix + storageRESTMethodReadVersion).HandlerFunc(httpTraceHdrs(server.ReadVersionHandler)).
-				Queries(restQueries(storageRESTVolume, storageRESTFilePath, storageRESTVersionID, storageRESTReadData)...)
-			subrouter.Methods(http.MethodPost).Path(storageRESTVersionPrefix + storageRESTMethodRenameData).HandlerFunc(httpTraceHdrs(server.RenameDataHandler)).
-				Queries(restQueries(storageRESTSrcVolume, storageRESTSrcPath,
-					storageRESTDstVolume, storageRESTDstPath)...)
-			subrouter.Methods(http.MethodPost).Path(storageRESTVersionPrefix + storageRESTMethodCreateFile).HandlerFunc(httpTraceHdrs(server.CreateFileHandler)).
-				Queries(restQueries(storageRESTVolume, storageRESTFilePath, storageRESTLength)...)
-
-			subrouter.Methods(http.MethodPost).Path(storageRESTVersionPrefix + storageRESTMethodCheckFile).HandlerFunc(httpTraceHdrs(server.CheckFileHandler)).
-				Queries(restQueries(storageRESTVolume, storageRESTFilePath)...)
-			subrouter.Methods(http.MethodPost).Path(storageRESTVersionPrefix + storageRESTMethodCheckParts).HandlerFunc(httpTraceHdrs(server.CheckPartsHandler)).
-				Queries(restQueries(storageRESTVolume, storageRESTFilePath)...)
-
-			subrouter.Methods(http.MethodPost).Path(storageRESTVersionPrefix + storageRESTMethodReadAll).HandlerFunc(httpTraceHdrs(server.ReadAllHandler)).
-				Queries(restQueries(storageRESTVolume, storageRESTFilePath)...)
-			subrouter.Methods(http.MethodPost).Path(storageRESTVersionPrefix + storageRESTMethodReadFile).HandlerFunc(httpTraceHdrs(server.ReadFileHandler)).
-				Queries(restQueries(storageRESTVolume, storageRESTFilePath, storageRESTOffset, storageRESTLength, storageRESTBitrotAlgo, storageRESTBitrotHash)...)
-			subrouter.Methods(http.MethodPost).Path(storageRESTVersionPrefix + storageRESTMethodReadFileStream).HandlerFunc(httpTraceHdrs(server.ReadFileStreamHandler)).
-				Queries(restQueries(storageRESTVolume, storageRESTFilePath, storageRESTOffset, storageRESTLength)...)
-			subrouter.Methods(http.MethodPost).Path(storageRESTVersionPrefix + storageRESTMethodListDir).HandlerFunc(httpTraceHdrs(server.ListDirHandler)).
-				Queries(restQueries(storageRESTVolume, storageRESTDirPath, storageRESTCount)...)
-
-			subrouter.Methods(http.MethodPost).Path(storageRESTVersionPrefix + storageRESTMethodDeleteVersions).HandlerFunc(httpTraceHdrs(server.DeleteVersionsHandler)).
-				Queries(restQueries(storageRESTVolume, storageRESTTotalVersions)...)
-			subrouter.Methods(http.MethodPost).Path(storageRESTVersionPrefix + storageRESTMethodDeleteFile).HandlerFunc(httpTraceHdrs(server.DeleteFileHandler)).
-				Queries(restQueries(storageRESTVolume, storageRESTFilePath, storageRESTRecursive)...)
-
-			subrouter.Methods(http.MethodPost).Path(storageRESTVersionPrefix + storageRESTMethodRenameFile).HandlerFunc(httpTraceHdrs(server.RenameFileHandler)).
-				Queries(restQueries(storageRESTSrcVolume, storageRESTSrcPath, storageRESTDstVolume, storageRESTDstPath)...)
-			subrouter.Methods(http.MethodPost).Path(storageRESTVersionPrefix + storageRESTMethodVerifyFile).HandlerFunc(httpTraceHdrs(server.VerifyFileHandler)).
-				Queries(restQueries(storageRESTVolume, storageRESTFilePath)...)
-			subrouter.Methods(http.MethodPost).Path(storageRESTVersionPrefix + storageRESTMethodWalkDir).HandlerFunc(httpTraceHdrs(server.WalkDirHandler)).
-				Queries(restQueries(storageRESTVolume, storageRESTDirPath, storageRESTRecursive)...)
 		}
 	}
 }

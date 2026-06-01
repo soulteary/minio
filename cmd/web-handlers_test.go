@@ -1219,7 +1219,6 @@ func TestWebObjectLayerFaultyDisks(t *testing.T) {
 		{"MakeBucket", MakeBucketArgs{BucketName: bucketName}, WebGenericRep{}},
 		{"ListBuckets", WebGenericArgs{}, ListBucketsRep{}},
 		{"ListObjects", ListObjectsArgs{BucketName: bucketName, Prefix: ""}, ListObjectsRep{}},
-		{"GetBucketPolicy", GetBucketPolicyArgs{BucketName: bucketName, Prefix: ""}, GetBucketPolicyRep{}},
 		{"SetBucketPolicy", SetBucketPolicyWebArgs{BucketName: bucketName, Prefix: "", Policy: "none"}, WebGenericRep{}},
 	}
 

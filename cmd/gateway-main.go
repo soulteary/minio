@@ -26,8 +26,8 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/gorilla/mux"
 	"github.com/minio/cli"
+	"github.com/minio/minio/cmd/config"
 	xhttp "github.com/minio/minio/cmd/http"
 	"github.com/minio/minio/cmd/logger"
 	"github.com/minio/minio/pkg/certs"
@@ -224,6 +224,7 @@ func StartGateway(ctx *cli.Context, gw Gateway) {
 	globalIsGateway = true
 
 	enableConfigOps := false
+	enableIAMOps := globalEtcdClient != nil
 
 	// TODO: We need to move this code with globalConfigSys.Init()
 	// for now keep it here such that "s3" gateway layer initializes
@@ -240,46 +241,18 @@ func StartGateway(ctx *cli.Context, gw Gateway) {
 	globalServerConfig = srvCfg
 	globalServerConfigMu.Unlock()
 
-	// Initialize router. `SkipClean(true)` stops gorilla/mux from
-	// normalizing URL path minio/minio#3256
-	// avoid URL path encoding minio/minio#8950
-	router := mux.NewRouter().SkipClean(true).UseEncodedPath()
-
-	if globalEtcdClient != nil {
-		// Enable STS router if etcd is enabled.
-		registerSTSRouter(router)
+	// Initialize Fiber HTTP handler.
+	app, err := configureGatewayHandler(enableConfigOps, enableIAMOps, globalEtcdClient != nil)
+	if err != nil {
+		logger.Fatal(config.ErrUnexpectedError(err), "Unable to configure gateway HTTP handler")
 	}
-
-	enableIAMOps := globalEtcdClient != nil
-
-	// Enable IAM admin APIs if etcd is enabled, if not just enable basic
-	// operations such as profiling, server info etc.
-	registerAdminRouter(router, enableConfigOps, enableIAMOps)
-
-	// Add healthcheck router
-	registerHealthCheckRouter(router)
-
-	// Add server metrics router
-	registerMetricsRouter(router)
-
-	// Register web router when its enabled.
-	if globalBrowserEnabled {
-		logger.FatalIf(registerWebRouter(router), "Unable to configure web browser")
-	}
-
-	// Add API router.
-	registerAPIRouter(router)
-
-	// Use all the middlewares
-	router.Use(globalHandlers...)
 
 	var getCert certs.GetCertificateFunc
 	if globalTLSCerts != nil {
 		getCert = globalTLSCerts.GetCertificate
 	}
 
-	httpServer := xhttp.NewServer([]string{globalCLIContext.Addr},
-		criticalErrorHandler{corsHandler(router)}, getCert)
+	httpServer := xhttp.NewServer([]string{globalCLIContext.Addr}, app, getCert)
 	httpServer.BaseContext = func(listener net.Listener) context.Context {
 		return GlobalContext
 	}

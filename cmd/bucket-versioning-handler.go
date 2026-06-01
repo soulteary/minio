@@ -22,7 +22,6 @@ import (
 	"net/http"
 
 	humanize "github.com/dustin/go-humanize"
-	"github.com/gorilla/mux"
 	"github.com/minio/minio/cmd/logger"
 	"github.com/minio/minio/pkg/bucket/policy"
 	"github.com/minio/minio/pkg/bucket/versioning"
@@ -42,8 +41,7 @@ func (api objectAPIHandlers) PutBucketVersioningHandler(w http.ResponseWriter, r
 
 	defer logger.AuditLog(ctx, w, r, mustGetClaimsFromToken(r))
 
-	vars := mux.Vars(r)
-	bucket := vars["bucket"]
+	bucket := urlVar(r, "bucket")
 
 	objectAPI := api.ObjectAPI()
 	if objectAPI == nil {
@@ -100,8 +98,7 @@ func (api objectAPIHandlers) GetBucketVersioningHandler(w http.ResponseWriter, r
 
 	defer logger.AuditLog(ctx, w, r, mustGetClaimsFromToken(r))
 
-	vars := mux.Vars(r)
-	bucket := vars["bucket"]
+	bucket := urlVar(r, "bucket")
 
 	objectAPI := api.ObjectAPI()
 	if objectAPI == nil {

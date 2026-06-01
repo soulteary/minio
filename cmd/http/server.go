@@ -17,9 +17,11 @@
 package http
 
 import (
+	"context"
 	"crypto/tls"
 	"errors"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"runtime/pprof"
 	"sync"
@@ -27,6 +29,7 @@ import (
 	"time"
 
 	humanize "github.com/dustin/go-humanize"
+	"github.com/gofiber/fiber/v3"
 
 	"github.com/minio/minio-go/v7/pkg/set"
 	"github.com/minio/minio/cmd/config"
@@ -46,15 +49,17 @@ const (
 	DefaultMaxHeaderBytes = 1 * humanize.MiByte
 )
 
-// Server - extended http.Server supports multiple addresses to serve and enhanced connection handling.
+// Server - extended server supports multiple addresses and Fiber app serving.
 type Server struct {
-	http.Server
-	Addrs           []string      // addresses on which the server listens for new connection.
-	ShutdownTimeout time.Duration // timeout used for graceful server shutdown.
-	listenerMutex   sync.Mutex    // to guard 'listener' field.
-	listener        *httpListener // HTTP listener for all 'Addrs' field.
-	inShutdown      uint32        // indicates whether the server is in shutdown or not
-	requestCount    int32         // counter holds no. of request in progress.
+	App             *fiber.App
+	Addrs           []string
+	ShutdownTimeout time.Duration
+	TLSConfig       *tls.Config
+	BaseContext     func(net.Listener) context.Context
+	listenerMutex   sync.Mutex
+	listener        *httpListener
+	inShutdown      uint32
+	requestCount    int32
 }
 
 // GetRequestCount - returns number of request in progress.
@@ -62,56 +67,43 @@ func (srv *Server) GetRequestCount() int {
 	return int(atomic.LoadInt32(&srv.requestCount))
 }
 
-// Start - start HTTP server
+// Start - start HTTP server using Fiber on the configured listener(s).
 func (srv *Server) Start() (err error) {
-	// Take a copy of server fields.
 	var tlsConfig *tls.Config
 	if srv.TLSConfig != nil {
 		tlsConfig = srv.TLSConfig.Clone()
 	}
-	handler := srv.Handler // if srv.Handler holds non-synced state -> possible data race
 
-	addrs := set.CreateStringSet(srv.Addrs...).ToSlice() // copy and remove duplicates
+	addrs := set.CreateStringSet(srv.Addrs...).ToSlice()
 
-	// Create new HTTP listener.
 	var listener *httpListener
-	listener, err = newHTTPListener(
-		addrs,
-	)
+	listener, err = newHTTPListener(addrs)
 	if err != nil {
 		return err
 	}
 
-	// Wrap given handler to do additional
-	// * return 503 (service unavailable) if the server in shutdown.
-	wrappedHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// If server is in shutdown.
+	srv.App.Use(func(c fiber.Ctx) error {
 		if atomic.LoadUint32(&srv.inShutdown) != 0 {
-			// To indicate disable keep-alives
-			w.Header().Set("Connection", "close")
-			w.WriteHeader(http.StatusForbidden)
-			w.Write([]byte(http.ErrServerClosed.Error()))
-			w.(http.Flusher).Flush()
-			return
+			c.Set("Connection", "close")
+			return c.Status(fiber.StatusForbidden).SendString(http.ErrServerClosed.Error())
 		}
-
 		atomic.AddInt32(&srv.requestCount, 1)
 		defer atomic.AddInt32(&srv.requestCount, -1)
-
-		// Handle request using passed handler.
-		handler.ServeHTTP(w, r)
+		return c.Next()
 	})
 
 	srv.listenerMutex.Lock()
-	srv.Handler = wrappedHandler
 	srv.listener = listener
 	srv.listenerMutex.Unlock()
 
-	// Start servicing with listener.
+	var ln net.Listener = listener
 	if tlsConfig != nil {
-		return srv.Server.Serve(tls.NewListener(listener, tlsConfig))
+		ln = tls.NewListener(listener, tlsConfig)
 	}
-	return srv.Server.Serve(listener)
+
+	return srv.App.Listener(ln, fiber.ListenConfig{
+		DisableStartupMessage: true,
+	})
 }
 
 // Shutdown - shuts down HTTP server.
@@ -124,11 +116,13 @@ func (srv *Server) Shutdown() error {
 	srv.listenerMutex.Unlock()
 
 	if atomic.AddUint32(&srv.inShutdown, 1) > 1 {
-		// shutdown in progress
 		return http.ErrServerClosed
 	}
 
-	// Close underneath HTTP listener.
+	if err := srv.App.Shutdown(); err != nil {
+		return err
+	}
+
 	srv.listenerMutex.Lock()
 	err := srv.listener.Close()
 	srv.listenerMutex.Unlock()
@@ -136,7 +130,6 @@ func (srv *Server) Shutdown() error {
 		return err
 	}
 
-	// Wait for opened connection to be closed up to Shutdown timeout.
 	shutdownTimeout := srv.ShutdownTimeout
 	shutdownTimer := time.NewTimer(shutdownTimeout)
 	ticker := time.NewTicker(serverShutdownPoll)
@@ -144,7 +137,6 @@ func (srv *Server) Shutdown() error {
 	for {
 		select {
 		case <-shutdownTimer.C:
-			// Write all running goroutines.
 			tmp, err := ioutil.TempFile("", "minio-goroutines-*.txt")
 			if err == nil {
 				_ = pprof.Lookup("goroutine").WriteTo(tmp, 1)
@@ -160,8 +152,8 @@ func (srv *Server) Shutdown() error {
 	}
 }
 
-// NewServer - creates new HTTP server using given arguments.
-func NewServer(addrs []string, handler http.Handler, getCert certs.GetCertificateFunc) *Server {
+// NewServer - creates new Fiber server using given arguments.
+func NewServer(addrs []string, app *fiber.App, getCert certs.GetCertificateFunc) *Server {
 	secureCiphers := env.Get(api.EnvAPISecureCiphers, config.EnableOn) == config.EnableOn
 
 	var tlsConfig *tls.Config
@@ -178,13 +170,10 @@ func NewServer(addrs []string, handler http.Handler, getCert certs.GetCertificat
 		}
 	}
 
-	httpServer := &Server{
+	return &Server{
+		App:             app,
 		Addrs:           addrs,
 		ShutdownTimeout: DefaultShutdownTimeout,
+		TLSConfig:       tlsConfig,
 	}
-	httpServer.Handler = handler
-	httpServer.TLSConfig = tlsConfig
-	httpServer.MaxHeaderBytes = DefaultMaxHeaderBytes
-
-	return httpServer
 }

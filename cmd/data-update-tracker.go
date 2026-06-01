@@ -31,10 +31,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/bits-and-blooms/bloom/v3"
 	"github.com/minio/minio/cmd/logger"
 	"github.com/minio/minio/pkg/color"
 	"github.com/minio/minio/pkg/console"
-	"github.com/bits-and-blooms/bloom/v3"
 )
 
 const (

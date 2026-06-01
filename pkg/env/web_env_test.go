@@ -22,22 +22,25 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strings"
 	"testing"
-
-	"github.com/gorilla/mux"
 )
 
 func GetenvHandler(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	if vars["namespace"] != "default" {
+	parts := strings.Split(strings.TrimPrefix(r.URL.Path, "/webhook/v1/getenv/"), "/")
+	if len(parts) != 2 {
+		http.Error(w, "invalid path", http.StatusNotFound)
+		return
+	}
+	if parts[0] != "default" {
 		http.Error(w, "namespace not found", http.StatusNotFound)
 		return
 	}
-	if vars["name"] != "minio" {
+	if parts[1] != "minio" {
 		http.Error(w, "tenant not found", http.StatusNotFound)
 		return
 	}
-	if vars["key"] != "MINIO_ARGS" {
+	if r.URL.Query().Get("key") != "MINIO_ARGS" {
 		http.Error(w, "key not found", http.StatusNotFound)
 		return
 	}
@@ -46,12 +49,10 @@ func GetenvHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func startTestServer(t *testing.T) *httptest.Server {
-	router := mux.NewRouter().SkipClean(true).UseEncodedPath()
-	router.Methods(http.MethodGet).
-		Path("/webhook/v1/getenv/{namespace}/{name}").
-		HandlerFunc(GetenvHandler).Queries("key", "{key:.*}")
+	mux := http.NewServeMux()
+	mux.HandleFunc("/webhook/v1/getenv/", GetenvHandler)
 
-	ts := httptest.NewServer(router)
+	ts := httptest.NewServer(mux)
 	t.Cleanup(func() {
 		ts.Close()
 	})

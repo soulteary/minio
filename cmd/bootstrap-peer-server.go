@@ -26,7 +26,6 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/gorilla/mux"
 	"github.com/minio/minio-go/v7/pkg/set"
 	xhttp "github.com/minio/minio/cmd/http"
 	"github.com/minio/minio/cmd/logger"
@@ -101,18 +100,6 @@ func (b *bootstrapRESTServer) VerifyHandler(w http.ResponseWriter, r *http.Reque
 	cfg := getServerSystemCfg()
 	logger.LogIf(ctx, json.NewEncoder(w).Encode(&cfg))
 	w.(http.Flusher).Flush()
-}
-
-// registerBootstrapRESTHandlers - register bootstrap rest router.
-func registerBootstrapRESTHandlers(router *mux.Router) {
-	server := &bootstrapRESTServer{}
-	subrouter := router.PathPrefix(bootstrapRESTPrefix).Subrouter()
-
-	subrouter.Methods(http.MethodPost).Path(bootstrapRESTVersionPrefix + bootstrapRESTMethodHealth).HandlerFunc(
-		httpTraceHdrs(server.HealthHandler))
-
-	subrouter.Methods(http.MethodPost).Path(bootstrapRESTVersionPrefix + bootstrapRESTMethodVerify).HandlerFunc(
-		httpTraceHdrs(server.VerifyHandler))
 }
 
 // client to talk to bootstrap NEndpoints.

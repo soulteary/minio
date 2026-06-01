@@ -55,7 +55,7 @@ import (
 
 	"github.com/fatih/color"
 
-	"github.com/gorilla/mux"
+	"github.com/gofiber/fiber/v3/middleware/adaptor"
 	"github.com/minio/minio-go/v7/pkg/s3utils"
 	"github.com/minio/minio-go/v7/pkg/signer"
 	"github.com/minio/minio/cmd/config"
@@ -124,19 +124,19 @@ func TestMain(m *testing.M) {
 // concurrency level for certain parallel tests.
 const testConcurrencyLevel = 10
 
-///
-/// Excerpts from @lsegal - https://github.com/aws/aws-sdk-js/issues/659#issuecomment-120477258
-///
-///  User-Agent:
-///
-///      This is ignored from signing because signing this causes problems with generating pre-signed URLs
-///      (that are executed by other agents) or when customers pass requests through proxies, which may
-///      modify the user-agent.
-///
-///  Authorization:
-///
-///      Is skipped for obvious reasons
-///
+// /
+// / Excerpts from @lsegal - https://github.com/aws/aws-sdk-js/issues/659#issuecomment-120477258
+// /
+// /  User-Agent:
+// /
+// /      This is ignored from signing because signing this causes problems with generating pre-signed URLs
+// /      (that are executed by other agents) or when customers pass requests through proxies, which may
+// /      modify the user-agent.
+// /
+// /  Authorization:
+// /
+// /      Is skipped for obvious reasons
+// /
 var ignoredHeaders = map[string]bool{
 	"Authorization": true,
 	"User-Agent":    true,
@@ -291,8 +291,9 @@ func isSameType(obj1, obj2 interface{}) bool {
 
 // TestServer encapsulates an instantiation of a MinIO instance with a temporary backend.
 // Example usage:
-//   s := StartTestServer(t,"Erasure")
-//   defer s.Stop()
+//
+//	s := StartTestServer(t,"Erasure")
+//	defer s.Stop()
 type TestServer struct {
 	Root      string
 	Disks     EndpointServerPools
@@ -336,7 +337,7 @@ func UnstartedTestServer(t TestErrHandler, instanceType string) TestServer {
 	}
 
 	// Run TestServer.
-	testServer.Server = httptest.NewUnstartedServer(criticalErrorHandler{corsHandler(httpHandler)})
+	testServer.Server = httptest.NewUnstartedServer(adaptor.FiberApp(httpHandler))
 
 	globalObjLayerMutex.Lock()
 	globalObjectAPI = objLayer
@@ -1598,7 +1599,7 @@ func removeRoots(roots []string) {
 	}
 }
 
-//removeDiskN - removes N disks from supplied disk slice.
+// removeDiskN - removes N disks from supplied disk slice.
 func removeDiskN(disks []string, n int) {
 	if n > len(disks) {
 		n = len(disks)
@@ -1629,11 +1630,7 @@ func initAPIHandlerTest(obj ObjectLayer, endpoints []string) (string, http.Handl
 	// Register the API end points with Erasure object layer.
 	// Registering only the GetObject handler.
 	apiRouter := initTestAPIEndPoints(obj, endpoints)
-	f := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		r.RequestURI = r.URL.RequestURI()
-		apiRouter.ServeHTTP(w, r)
-	})
-	return bucketName, f, nil
+	return bucketName, apiRouter, nil
 }
 
 // prepare test backend.
@@ -1661,11 +1658,14 @@ func prepareTestBackend(ctx context.Context, instanceType string) (ObjectLayer, 
 // response for anonymous/unsigned and unknown signature type HTTP request.
 
 // Here is the brief description of some of the arguments to the function below.
-//   apiRouter - http.Handler with the relevant API endPoint (API endPoint under test) registered.
-//   anonReq   - unsigned *http.Request to invoke the handler's response for anonymous requests.
-//   policyFunc    - function to return bucketPolicy statement which would permit the anonymous request to be served.
+//
+//	apiRouter - http.Handler with the relevant API endPoint (API endPoint under test) registered.
+//	anonReq   - unsigned *http.Request to invoke the handler's response for anonymous requests.
+//	policyFunc    - function to return bucketPolicy statement which would permit the anonymous request to be served.
+//
 // The test works in 2 steps, here is the description of the steps.
-//   STEP 1: Call the handler with the unsigned HTTP request (anonReq), assert for the `ErrAccessDenied` error response.
+//
+//	STEP 1: Call the handler with the unsigned HTTP request (anonReq), assert for the `ErrAccessDenied` error response.
 func ExecObjectLayerAPIAnonTest(t *testing.T, obj ObjectLayer, testName, bucketName, objectName, instanceType string, apiRouter http.Handler,
 	anonReq *http.Request, bucketPolicy *policy.Policy) {
 
@@ -2006,149 +2006,6 @@ func ExecObjectLayerStaleFilesTest(t *testing.T, objTest objTestStaleFilesType) 
 	// Executing the object layer tests for Erasure.
 	objTest(objLayer, ErasureTestStr, erasureDisks, t)
 	defer removeRoots(erasureDisks)
-}
-
-func registerBucketLevelFunc(bucket *mux.Router, api objectAPIHandlers, apiFunctions ...string) {
-	for _, apiFunction := range apiFunctions {
-		switch apiFunction {
-		case "PostPolicy":
-			// Register PostPolicy handler.
-			bucket.Methods(http.MethodPost).HeadersRegexp("Content-Type", "multipart/form-data*").HandlerFunc(api.PostPolicyBucketHandler)
-		case "HeadObject":
-			// Register HeadObject handler.
-			bucket.Methods("Head").Path("/{object:.+}").HandlerFunc(api.HeadObjectHandler)
-		case "GetObject":
-			// Register GetObject handler.
-			bucket.Methods(http.MethodGet).Path("/{object:.+}").HandlerFunc(api.GetObjectHandler)
-		case "PutObject":
-			// Register PutObject handler.
-			bucket.Methods(http.MethodPut).Path("/{object:.+}").HandlerFunc(api.PutObjectHandler)
-		case "DeleteObject":
-			// Register Delete Object handler.
-			bucket.Methods(http.MethodDelete).Path("/{object:.+}").HandlerFunc(api.DeleteObjectHandler)
-		case "CopyObject":
-			// Register Copy Object  handler.
-			bucket.Methods(http.MethodPut).Path("/{object:.+}").HeadersRegexp("X-Amz-Copy-Source", ".*?(\\/|%2F).*?").HandlerFunc(api.CopyObjectHandler)
-		case "PutBucketPolicy":
-			// Register PutBucket Policy handler.
-			bucket.Methods(http.MethodPut).HandlerFunc(api.PutBucketPolicyHandler).Queries("policy", "")
-		case "DeleteBucketPolicy":
-			// Register Delete bucket HTTP policy handler.
-			bucket.Methods(http.MethodDelete).HandlerFunc(api.DeleteBucketPolicyHandler).Queries("policy", "")
-		case "GetBucketPolicy":
-			// Register Get Bucket policy HTTP Handler.
-			bucket.Methods(http.MethodGet).HandlerFunc(api.GetBucketPolicyHandler).Queries("policy", "")
-		case "GetBucketLifecycle":
-			bucket.Methods(http.MethodGet).HandlerFunc(api.GetBucketLifecycleHandler).Queries("lifecycle", "")
-		case "PutBucketLifecycle":
-			bucket.Methods(http.MethodPut).HandlerFunc(api.PutBucketLifecycleHandler).Queries("lifecycle", "")
-		case "DeleteBucketLifecycle":
-			bucket.Methods(http.MethodDelete).HandlerFunc(api.DeleteBucketLifecycleHandler).Queries("lifecycle", "")
-		case "GetBucketLocation":
-			// Register GetBucketLocation handler.
-			bucket.Methods(http.MethodGet).HandlerFunc(api.GetBucketLocationHandler).Queries("location", "")
-		case "HeadBucket":
-			// Register HeadBucket handler.
-			bucket.Methods(http.MethodHead).HandlerFunc(api.HeadBucketHandler)
-		case "DeleteMultipleObjects":
-			// Register DeleteMultipleObjects handler.
-			bucket.Methods(http.MethodPost).HandlerFunc(api.DeleteMultipleObjectsHandler).Queries("delete", "")
-		case "NewMultipart":
-			// Register New Multipart upload handler.
-			bucket.Methods(http.MethodPost).Path("/{object:.+}").HandlerFunc(api.NewMultipartUploadHandler).Queries("uploads", "")
-		case "CopyObjectPart":
-			// Register CopyObjectPart handler.
-			bucket.Methods(http.MethodPut).Path("/{object:.+}").HeadersRegexp("X-Amz-Copy-Source", ".*?(\\/|%2F).*?").HandlerFunc(api.CopyObjectPartHandler).Queries("partNumber", "{partNumber:[0-9]+}", "uploadId", "{uploadId:.*}")
-		case "PutObjectPart":
-			// Register PutObjectPart handler.
-			bucket.Methods(http.MethodPut).Path("/{object:.+}").HandlerFunc(api.PutObjectPartHandler).Queries("partNumber", "{partNumber:[0-9]+}", "uploadId", "{uploadId:.*}")
-		case "ListObjectParts":
-			// Register ListObjectParts handler.
-			bucket.Methods(http.MethodGet).Path("/{object:.+}").HandlerFunc(api.ListObjectPartsHandler).Queries("uploadId", "{uploadId:.*}")
-		case "ListMultipartUploads":
-			// Register ListMultipartUploads handler.
-			bucket.Methods(http.MethodGet).HandlerFunc(api.ListMultipartUploadsHandler).Queries("uploads", "")
-		case "CompleteMultipart":
-			// Register Complete Multipart Upload handler.
-			bucket.Methods(http.MethodPost).Path("/{object:.+}").HandlerFunc(api.CompleteMultipartUploadHandler).Queries("uploadId", "{uploadId:.*}")
-		case "AbortMultipart":
-			// Register AbortMultipart Handler.
-			bucket.Methods(http.MethodDelete).Path("/{object:.+}").HandlerFunc(api.AbortMultipartUploadHandler).Queries("uploadId", "{uploadId:.*}")
-		case "GetBucketNotification":
-			// Register GetBucketNotification Handler.
-			bucket.Methods(http.MethodGet).HandlerFunc(api.GetBucketNotificationHandler).Queries("notification", "")
-		case "PutBucketNotification":
-			// Register PutBucketNotification Handler.
-			bucket.Methods(http.MethodPut).HandlerFunc(api.PutBucketNotificationHandler).Queries("notification", "")
-		case "ListenNotification":
-			// Register ListenNotification Handler.
-			bucket.Methods(http.MethodGet).HandlerFunc(api.ListenNotificationHandler).Queries("events", "{events:.*}")
-		}
-	}
-}
-
-// registerAPIFunctions helper function to add API functions identified by name to the routers.
-func registerAPIFunctions(muxRouter *mux.Router, objLayer ObjectLayer, apiFunctions ...string) {
-	if len(apiFunctions) == 0 {
-		// Register all api endpoints by default.
-		registerAPIRouter(muxRouter)
-		return
-	}
-	// API Router.
-	apiRouter := muxRouter.PathPrefix(SlashSeparator).Subrouter()
-	// Bucket router.
-	bucketRouter := apiRouter.PathPrefix("/{bucket}").Subrouter()
-
-	// All object storage operations are registered as HTTP handlers on `objectAPIHandlers`.
-	// When the handlers get a HTTP request they use the underlying ObjectLayer to perform operations.
-	globalObjLayerMutex.Lock()
-	globalObjectAPI = objLayer
-	globalObjLayerMutex.Unlock()
-
-	// When cache is enabled, Put and Get operations are passed
-	// to underlying cache layer to manage object layer operation and disk caching
-	// operation
-	api := objectAPIHandlers{
-		ObjectAPI: func() ObjectLayer {
-			return globalObjectAPI
-		},
-		CacheAPI: func() CacheObjectLayer {
-			return globalCacheObjectAPI
-		},
-	}
-
-	// Register ListBuckets	handler.
-	apiRouter.Methods(http.MethodGet).HandlerFunc(api.ListBucketsHandler)
-	// Register all bucket level handlers.
-	registerBucketLevelFunc(bucketRouter, api, apiFunctions...)
-}
-
-// Takes in Erasure object layer, and the list of API end points to be tested/required, registers the API end points and returns the HTTP handler.
-// Need isolated registration of API end points while writing unit tests for end points.
-// All the API end points are registered only for the default case.
-func initTestAPIEndPoints(objLayer ObjectLayer, apiFunctions []string) http.Handler {
-	// initialize a new mux router.
-	// goriilla/mux is the library used to register all the routes and handle them.
-	muxRouter := mux.NewRouter().SkipClean(true)
-	if len(apiFunctions) > 0 {
-		// Iterate the list of API functions requested for and register them in mux HTTP handler.
-		registerAPIFunctions(muxRouter, objLayer, apiFunctions...)
-		return muxRouter
-	}
-	registerAPIRouter(muxRouter)
-	return muxRouter
-}
-
-// Initialize Web RPC Handlers for testing
-func initTestWebRPCEndPoint(objLayer ObjectLayer) http.Handler {
-	globalObjLayerMutex.Lock()
-	globalObjectAPI = objLayer
-	globalObjLayerMutex.Unlock()
-
-	// Initialize router.
-	muxRouter := mux.NewRouter().SkipClean(true)
-	registerWebRouter(muxRouter)
-	return muxRouter
 }
 
 // generateTLSCertKey creates valid key/cert with registered DNS or IP address

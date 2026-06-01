@@ -469,7 +469,7 @@ func serverMain(ctx *cli.Context) {
 	setMaxResources()
 
 	// Configure server.
-	handler, err := configureServerHandler(globalEndpoints)
+	app, err := configureServerHandler(globalEndpoints)
 	if err != nil {
 		logger.Fatal(config.ErrUnexpectedError(err), "Unable to configure one of server's RPC services")
 	}
@@ -479,7 +479,7 @@ func serverMain(ctx *cli.Context) {
 		getCert = globalTLSCerts.GetCertificate
 	}
 
-	httpServer := xhttp.NewServer([]string{globalMinioAddr}, criticalErrorHandler{corsHandler(handler)}, getCert)
+	httpServer := xhttp.NewServer([]string{globalMinioAddr}, app, getCert)
 	httpServer.BaseContext = func(listener net.Listener) context.Context {
 		return GlobalContext
 	}

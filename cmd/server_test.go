@@ -196,7 +196,7 @@ func (s *TestSuiteCommon) TestCors(c *check) {
 	expectedMap.Set("Access-Control-Allow-Origin", "http://foobar.com")
 	expectedMap["Access-Control-Expose-Headers"] = []string{
 		"Date",
-		"Etag",
+		"ETag",
 		"Server",
 		"Connection",
 		"Accept-Ranges",
@@ -212,10 +212,10 @@ func (s *TestSuiteCommon) TestCors(c *check) {
 		"X-Amz-Bucket-Region",
 		"Expires",
 		"X-Amz*",
-		"X-Amz*",
+		"x-amz*",
 		"*",
 	}
-	expectedMap.Set("Vary", "Origin")
+	expectedMap["Vary"] = []string{"Access-Control-Request-Method", "Access-Control-Request-Headers", "Origin"}
 
 	req, _ := http.NewRequest(http.MethodOptions, s.endPoint, nil)
 	req.Header.Set("Origin", "http://foobar.com")

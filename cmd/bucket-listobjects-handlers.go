@@ -22,7 +22,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/gorilla/mux"
 	"github.com/minio/minio/cmd/logger"
 
 	"github.com/minio/minio/pkg/bucket/policy"
@@ -50,9 +49,9 @@ func concurrentDecryptETag(ctx context.Context, objects []ObjectInfo) {
 // Validate all the ListObjects query arguments, returns an APIErrorCode
 // if one of the args do not meet the required conditions.
 // Special conditions required by MinIO server are as below
-// - delimiter if set should be equal to '/', otherwise the request is rejected.
-// - marker if set should have a common prefix with 'prefix' param, otherwise
-//   the request is rejected.
+//   - delimiter if set should be equal to '/', otherwise the request is rejected.
+//   - marker if set should have a common prefix with 'prefix' param, otherwise
+//     the request is rejected.
 func validateListObjectsArgs(marker, delimiter, encodingType string, maxKeys int) APIErrorCode {
 	// Max keys cannot be negative.
 	if maxKeys < 0 {
@@ -77,8 +76,7 @@ func (api objectAPIHandlers) ListObjectVersionsHandler(w http.ResponseWriter, r 
 
 	defer logger.AuditLog(ctx, w, r, mustGetClaimsFromToken(r))
 
-	vars := mux.Vars(r)
-	bucket := vars["bucket"]
+	bucket := urlVar(r, "bucket")
 
 	objectAPI := api.ObjectAPI()
 	if objectAPI == nil {
@@ -138,8 +136,7 @@ func (api objectAPIHandlers) ListObjectsV2MHandler(w http.ResponseWriter, r *htt
 
 	defer logger.AuditLog(ctx, w, r, mustGetClaimsFromToken(r))
 
-	vars := mux.Vars(r)
-	bucket := vars["bucket"]
+	bucket := urlVar(r, "bucket")
 
 	objectAPI := api.ObjectAPI()
 	if objectAPI == nil {
@@ -205,8 +202,7 @@ func (api objectAPIHandlers) ListObjectsV2Handler(w http.ResponseWriter, r *http
 
 	defer logger.AuditLog(ctx, w, r, mustGetClaimsFromToken(r))
 
-	vars := mux.Vars(r)
-	bucket := vars["bucket"]
+	bucket := urlVar(r, "bucket")
 
 	objectAPI := api.ObjectAPI()
 	if objectAPI == nil {
@@ -299,14 +295,12 @@ func proxyRequestByNodeIndex(ctx context.Context, w http.ResponseWriter, r *http
 // This implementation of the GET operation returns some or all (up to 10000)
 // of the objects in a bucket. You can use the request parameters as selection
 // criteria to return a subset of the objects in a bucket.
-//
 func (api objectAPIHandlers) ListObjectsV1Handler(w http.ResponseWriter, r *http.Request) {
 	ctx := newContext(r, w, "ListObjectsV1")
 
 	defer logger.AuditLog(ctx, w, r, mustGetClaimsFromToken(r))
 
-	vars := mux.Vars(r)
-	bucket := vars["bucket"]
+	bucket := urlVar(r, "bucket")
 
 	objectAPI := api.ObjectAPI()
 	if objectAPI == nil {

@@ -22,7 +22,6 @@ import (
 	"io/ioutil"
 	"net/http"
 
-	"github.com/gorilla/mux"
 	"github.com/minio/minio/cmd/logger"
 	iampolicy "github.com/minio/minio/pkg/iam/policy"
 	"github.com/minio/minio/pkg/madmin"
@@ -49,8 +48,7 @@ func (a adminAPIHandlers) PutBucketQuotaConfigHandler(w http.ResponseWriter, r *
 		return
 	}
 
-	vars := mux.Vars(r)
-	bucket := pathClean(vars["bucket"])
+	bucket := pathClean(urlVar(r, "bucket"))
 
 	if _, err := objectAPI.GetBucketInfo(ctx, bucket); err != nil {
 		writeErrorResponseJSON(ctx, w, toAPIError(ctx, err), r.URL)
@@ -89,8 +87,7 @@ func (a adminAPIHandlers) GetBucketQuotaConfigHandler(w http.ResponseWriter, r *
 		return
 	}
 
-	vars := mux.Vars(r)
-	bucket := pathClean(vars["bucket"])
+	bucket := pathClean(urlVar(r, "bucket"))
 
 	if _, err := objectAPI.GetBucketInfo(ctx, bucket); err != nil {
 		writeErrorResponseJSON(ctx, w, toAPIError(ctx, err), r.URL)
@@ -118,8 +115,7 @@ func (a adminAPIHandlers) SetRemoteTargetHandler(w http.ResponseWriter, r *http.
 	ctx := newContext(r, w, "SetBucketTarget")
 
 	defer logger.AuditLog(ctx, w, r, mustGetClaimsFromToken(r))
-	vars := mux.Vars(r)
-	bucket := pathClean(vars["bucket"])
+	bucket := pathClean(urlVar(r, "bucket"))
 	update := r.URL.Query().Get("update") == "true"
 
 	if !globalIsErasure {
@@ -211,9 +207,8 @@ func (a adminAPIHandlers) ListRemoteTargetsHandler(w http.ResponseWriter, r *htt
 	ctx := newContext(r, w, "ListBucketTargets")
 
 	defer logger.AuditLog(ctx, w, r, mustGetClaimsFromToken(r))
-	vars := mux.Vars(r)
-	bucket := pathClean(vars["bucket"])
-	arnType := vars["type"]
+	bucket := pathClean(urlVar(r, "bucket"))
+	arnType := urlVar(r, "type")
 	if !globalIsErasure {
 		writeErrorResponseJSON(ctx, w, errorCodes.ToAPIErr(ErrNotImplemented), r.URL)
 		return
@@ -250,9 +245,8 @@ func (a adminAPIHandlers) RemoveRemoteTargetHandler(w http.ResponseWriter, r *ht
 	ctx := newContext(r, w, "RemoveBucketTarget")
 
 	defer logger.AuditLog(ctx, w, r, mustGetClaimsFromToken(r))
-	vars := mux.Vars(r)
-	bucket := pathClean(vars["bucket"])
-	arn := vars["arn"]
+	bucket := pathClean(urlVar(r, "bucket"))
+	arn := urlVar(r, "arn")
 
 	if !globalIsErasure {
 		writeErrorResponseJSON(ctx, w, errorCodes.ToAPIErr(ErrNotImplemented), r.URL)

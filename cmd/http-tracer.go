@@ -29,7 +29,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gorilla/mux"
+	"github.com/gofiber/fiber/v3"
 	"github.com/minio/minio/cmd/logger"
 	"github.com/minio/minio/pkg/handlers"
 	jsonrpc "github.com/minio/minio/pkg/rpc"
@@ -141,12 +141,11 @@ func WebTrace(ri *jsonrpc.RequestInfo) trace.Info {
 		}
 	}
 
-	vars := mux.Vars(r)
 	rq := trace.RequestInfo{
 		Time:     now,
 		Proto:    r.Proto,
 		Method:   r.Method,
-		Path:     SlashSeparator + pathJoin(vars["bucket"], vars["object"]),
+		Path:     SlashSeparator + pathJoin(urlVar(r, "bucket"), urlVar(r, "object")),
 		RawQuery: redactLDAPPwd(r.URL.RawQuery),
 		Client:   handlers.GetSourceIP(r),
 		Headers:  reqHeaders,
@@ -253,5 +252,63 @@ func Trace(f http.HandlerFunc, logBody bool, w http.ResponseWriter, r *http.Requ
 		OutputBytes:     rw.Size(),
 		TimeToFirstByte: rw.TimeToFirstByte,
 	}
+	return t
+}
+
+// TraceFiber gets trace of a Fiber HTTP request.
+func TraceFiber(f MinioHandler, logBody bool, c fiber.Ctx) trace.Info {
+	name := getOpName(runtime.FuncForPC(reflect.ValueOf(f).Pointer()).Name())
+
+	now := time.Now().UTC()
+	t := trace.Info{TraceType: trace.HTTP, FuncName: name, Time: now}
+
+	t.NodeName = requestHost(c)
+	if globalIsDistErasure {
+		t.NodeName = globalLocalNodeName
+	}
+	if t.NodeName == "" {
+		t.NodeName = globalLocalNodeName
+	}
+
+	if host, port, err := net.SplitHostPort(t.NodeName); err == nil {
+		if port == "443" || port == "80" {
+			t.NodeName = host
+		}
+	}
+
+	bucket := pathParamBucket(c)
+	object := pathParamObject(c)
+	rq := trace.RequestInfo{
+		Time:     now,
+		Proto:    c.Protocol(),
+		Method:   c.Method(),
+		Path:     SlashSeparator + pathJoin(bucket, object),
+		RawQuery: redactLDAPPwd(string(c.Request().URI().QueryString())),
+		Client:   handlers.GetSourceIPFiber(c),
+	}
+
+	start := time.Now()
+	_ = f(c)
+
+	status := c.Response().StatusCode()
+	if status == 0 {
+		status = http.StatusOK
+	}
+
+	rs := trace.ResponseInfo{
+		Time:       time.Now().UTC(),
+		StatusCode: status,
+		Body:       logger.BodyPlaceHolder,
+	}
+
+	t.ReqInfo = rq
+	t.RespInfo = rs
+	t.CallStats = trace.CallStats{
+		Latency:         time.Since(start),
+		InputBytes:      len(c.Body()),
+		OutputBytes:     len(c.Response().Body()),
+		TimeToFirstByte: time.Since(start),
+	}
+	_ = logBody
 	return t
 }
