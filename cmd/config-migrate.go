@@ -2373,8 +2373,6 @@ func migrateV31ToV32MinioSys(objAPI ObjectLayer) error {
 	}
 
 	cfg.Version = "32"
-	cfg.Notify.NSQ = make(map[string]target.NSQArgs)
-	cfg.Notify.NSQ["1"] = target.NSQArgs{}
 
 	if err = saveServerConfig(GlobalContext, objAPI, cfg); err != nil {
 		return fmt.Errorf("Failed to migrate config from ‘31’ to ‘32’. %w", err)
@@ -2458,9 +2456,6 @@ func migrateMinioSysConfigToKV(objAPI ObjectLayer) error {
 	}
 	for k, args := range cfg.Notify.NATS {
 		notify.SetNotifyNATS(newCfg, k, args)
-	}
-	for k, args := range cfg.Notify.NSQ {
-		notify.SetNotifyNSQ(newCfg, k, args)
 	}
 	for k, args := range cfg.Notify.PostgreSQL {
 		notify.SetNotifyPostgres(newCfg, k, args)

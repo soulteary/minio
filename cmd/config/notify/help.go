@@ -267,49 +267,6 @@ var (
 		},
 	}
 
-	HelpNSQ = config.HelpKVS{
-		config.HelpKV{
-			Key:         target.NSQAddress,
-			Description: "NSQ server address e.g. '127.0.0.1:4150'",
-			Type:        "address",
-		},
-		config.HelpKV{
-			Key:         target.NSQTopic,
-			Description: "NSQ topic",
-			Type:        "string",
-		},
-		config.HelpKV{
-			Key:         target.NSQTLS,
-			Description: "set to 'on' to enable TLS",
-			Optional:    true,
-			Type:        "on|off",
-		},
-		config.HelpKV{
-			Key:         target.NSQTLSSkipVerify,
-			Description: `trust server TLS without verification, defaults to "on" (verify)`,
-			Optional:    true,
-			Type:        "on|off",
-		},
-		config.HelpKV{
-			Key:         target.NSQQueueDir,
-			Description: queueDirComment,
-			Optional:    true,
-			Type:        "path",
-		},
-		config.HelpKV{
-			Key:         target.NSQQueueLimit,
-			Description: queueLimitComment,
-			Optional:    true,
-			Type:        "number",
-		},
-		config.HelpKV{
-			Key:         config.Comment,
-			Description: config.DefaultComment,
-			Optional:    true,
-			Type:        "sentence",
-		},
-	}
-
 	HelpES = config.HelpKVS{
 		config.HelpKV{
 			Key:         target.ElasticURL,

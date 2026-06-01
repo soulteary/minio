@@ -49,7 +49,6 @@ require (
 	github.com/nats-io/nats.go v1.52.0
 	github.com/nats-io/stan.go v0.10.4
 	github.com/ncw/directio v1.0.5
-	github.com/nsqio/go-nsq v1.1.0
 	github.com/olivere/elastic/v7 v7.0.32
 	github.com/philhofer/fwd v1.2.0
 	github.com/pierrec/lz4 v2.6.1+incompatible
@@ -92,7 +91,6 @@ require (
 	github.com/go-ole/go-ole v1.3.0 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
-	github.com/golang/snappy v1.0.0 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.29.0 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect

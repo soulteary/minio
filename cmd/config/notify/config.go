@@ -26,7 +26,6 @@ type Config struct {
 	Elasticsearch map[string]target.ElasticsearchArgs `json:"elasticsearch"`
 	MySQL         map[string]target.MySQLArgs         `json:"mysql"`
 	NATS          map[string]target.NATSArgs          `json:"nats"`
-	NSQ           map[string]target.NSQArgs           `json:"nsq"`
 	PostgreSQL    map[string]target.PostgreSQLArgs    `json:"postgresql"`
 	Redis         map[string]target.RedisArgs         `json:"redis"`
 	Webhook       map[string]target.WebhookArgs       `json:"webhook"`
@@ -40,7 +39,6 @@ const (
 func NewConfig() Config {
 	// Make sure to initialize notification targets
 	cfg := Config{
-		NSQ:           make(map[string]target.NSQArgs),
 		NATS:          make(map[string]target.NATSArgs),
 		Redis:         make(map[string]target.RedisArgs),
 		MySQL:         make(map[string]target.MySQLArgs),
@@ -48,7 +46,6 @@ func NewConfig() Config {
 		PostgreSQL:    make(map[string]target.PostgreSQLArgs),
 		Elasticsearch: make(map[string]target.ElasticsearchArgs),
 	}
-	cfg.NSQ[defaultTarget] = target.NSQArgs{}
 	cfg.NATS[defaultTarget] = target.NATSArgs{}
 	cfg.Redis[defaultTarget] = target.RedisArgs{}
 	cfg.MySQL[defaultTarget] = target.MySQLArgs{}

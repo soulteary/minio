@@ -772,7 +772,7 @@ type serverConfigV31 struct {
 	} `json:"policy"`
 }
 
-// serverConfigV32 is just like version '31' with added nsq notifer.
+// serverConfigV32 is just like version '31' with updated notification config.
 type serverConfigV32 struct {
 	Version string `json:"version"`
 

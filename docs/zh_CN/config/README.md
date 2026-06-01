@@ -204,7 +204,6 @@ MinIO支持如下列表中的通知。要配置单个目标，请参阅[此处](
 ```
 notify_webhook        发布 bucket 通知到 webhook endpoints
 notify_nats           发布 bucket 通知到 NATS endpoints
-notify_nsq            发布 bucket 通知到 NSQ endpoints
 notify_mysql          发布 bucket 通知到 MySQL databases
 notify_postgres       发布 bucket 通知到 Postgres databases
 notify_elasticsearch  发布 bucket 通知到 Elasticsearch endpoints

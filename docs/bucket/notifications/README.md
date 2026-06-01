@@ -40,7 +40,6 @@ Bucket events can be published to the following targets:
 | Supported Notification Targets    |                             |                                 |
 | :-------------------------------- | --------------------------- | ------------------------------- |
 | [`Redis`](#Redis)                 | [`MySQL`](#MySQL)           | [`NATS`](#NATS)                 |
-| [`NSQ`](#NSQ)                     |                             |                                 |
 | [`Elasticsearch`](#Elasticsearch) | [`PostgreSQL`](#PostgreSQL) | [`Webhooks`](#webhooks)         |
 
 ## Prerequisites
@@ -52,7 +51,6 @@ Bucket events can be published to the following targets:
 $ mc admin config get myminio | grep notify
 notify_webhook        publish bucket notifications to webhook endpoints
 notify_nats           publish bucket notifications to NATS endpoints
-notify_nsq            publish bucket notifications to NSQ endpoints
 notify_mysql          publish bucket notifications to MySQL databases
 notify_postgres       publish bucket notifications to Postgres databases
 notify_elasticsearch  publish bucket notifications to Elasticsearch endpoints
@@ -938,95 +936,4 @@ Wait a few moments, then check the bucket’s contents with mc ls — you wi
 ```
 mc ls myminio/images-thumbnail
 [2017-02-08 11:39:40 IST]   992B images-thumbnail.jpg
-```
-
-<a name="NSQ"></a>
-
-## Publish MinIO events to NSQ
-
-Install an NSQ Daemon from [here](https://nsq.io/). Or use the following Docker
-command for starting an nsq daemon:
-
-```
-docker run --rm -p 4150-4151:4150-4151 nsqio/nsq /nsqd
-```
-
-### Step 1: Add NSQ endpoint to MinIO
-
-MinIO supports persistent event store. The persistent store will backup events when the NSQ broker goes offline and replays it when the broker comes back online. The event store can be configured by setting the directory path in `queue_dir` field and the maximum limit of events in the queue_dir in `queue_limit` field. For eg, the `queue_dir` can be `/home/events` and `queue_limit` can be `1000`. By default, the `queue_limit` is set to 100000.
-
-To update the configuration, use `mc admin config get` command to get the current configuration for `notify_nsq`.
-
-```
-KEY:
-notify_nsq[:name]  publish bucket notifications to NSQ endpoints
-
-ARGS:
-nsqd_address*    (address)   NSQ server address e.g. '127.0.0.1:4150'
-topic*           (string)    NSQ topic
-tls              (on|off)    set to 'on' to enable TLS
-tls_skip_verify  (on|off)    trust server TLS without verification, defaults to "on" (verify)
-queue_dir        (path)      staging dir for undelivered messages e.g. '/home/events'
-queue_limit      (number)    maximum limit for undelivered messages, defaults to '100000'
-comment          (sentence)  optionally add a comment to this setting
-```
-
-or environment variables
-```
-KEY:
-notify_nsq[:name]  publish bucket notifications to NSQ endpoints
-
-ARGS:
-MINIO_NOTIFY_NSQ_ENABLE*          (on|off)    enable notify_nsq target, default is 'off'
-MINIO_NOTIFY_NSQ_NSQD_ADDRESS*    (address)   NSQ server address e.g. '127.0.0.1:4150'
-MINIO_NOTIFY_NSQ_TOPIC*           (string)    NSQ topic
-MINIO_NOTIFY_NSQ_TLS              (on|off)    set to 'on' to enable TLS
-MINIO_NOTIFY_NSQ_TLS_SKIP_VERIFY  (on|off)    trust server TLS without verification, defaults to "on" (verify)
-MINIO_NOTIFY_NSQ_QUEUE_DIR        (path)      staging dir for undelivered messages e.g. '/home/events'
-MINIO_NOTIFY_NSQ_QUEUE_LIMIT      (number)    maximum limit for undelivered messages, defaults to '100000'
-MINIO_NOTIFY_NSQ_COMMENT          (sentence)  optionally add a comment to this setting
-```
-
-```sh
-$ mc admin config get myminio/ notify_nsq
-notify_nsq:1 nsqd_address="" queue_dir="" queue_limit="0"  tls="off" tls_skip_verify="off" topic=""
-```
-
-Use `mc admin config set` command to update the configuration for the deployment. Restart the MinIO server to put the changes into effect. The server will print a line like `SQS ARNs: arn:minio:sqs::1:nsq` at start-up if there were no errors.
-
-```sh
-$ mc admin config set myminio notify_nsq:1 nsqd_address="127.0.0.1:4150" queue_dir="" queue_limit="0" tls="off" tls_skip_verify="on" topic="minio"
-```
-
-Note that, you can add as many NSQ daemon endpoint configurations as needed by providing an identifier (like "1" in the example above) for the NSQ instance and an object of per-server configuration parameters.
-
-### Step 2: Enable bucket notification using MinIO client
-
-We will enable bucket event notification to trigger whenever a JPEG image is uploaded or deleted `images` bucket on `myminio` server. Here ARN value is `arn:minio:sqs::1:nsq`.
-
-```
-mc mb myminio/images
-mc event add  myminio/images arn:minio:sqs::1:nsq --suffix .jpg
-mc event list myminio/images
-arn:minio:sqs::1:nsq s3:ObjectCreated:*,s3:ObjectRemoved:* Filter: suffix=”.jpg”
-```
-
-### Step 3: Test on NSQ
-
-The simplest test is to download `nsq_tail` from [nsq github](https://github.com/nsqio/nsq/releases)
-
-```
-./nsq_tail -nsqd-tcp-address 127.0.0.1:4150 -topic minio
-```
-
-Open another terminal and upload a JPEG image into `images` bucket.
-
-```
-mc cp gopher.jpg myminio/images
-```
-
-You should receive the following event notification via NSQ once the upload completes.
-
-```
-{"EventName":"s3:ObjectCreated:Put","Key":"images/gopher.jpg","Records":[{"eventVersion":"2.0","eventSource":"minio:s3","awsRegion":"","eventTime":"2018-10-31T09:31:11Z","eventName":"s3:ObjectCreated:Put","userIdentity":{"principalId":"21EJ9HYV110O8NVX2VMS"},"requestParameters":{"sourceIPAddress":"10.1.1.1"},"responseElements":{"x-amz-request-id":"1562A792DAA53426","x-minio-origin-endpoint":"http://10.0.3.1:9000"},"s3":{"s3SchemaVersion":"1.0","configurationId":"Config","bucket":{"name":"images","ownerIdentity":{"principalId":"21EJ9HYV110O8NVX2VMS"},"arn":"arn:aws:s3:::images"},"object":{"key":"gopher.jpg","size":162023,"eTag":"5337769ffa594e742408ad3f30713cd7","contentType":"image/jpeg","userMetadata":{"content-type":"image/jpeg"},"versionId":"1","sequencer":"1562A792DAA53426"}},"source":{"host":"","port":"","userAgent":"MinIO (linux; amd64) minio-go/v6.0.8 mc/DEVELOPMENT.GOGET"}}]}
 ```

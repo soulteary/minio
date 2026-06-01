@@ -125,11 +125,6 @@ func FetchRegisteredTargets(ctx context.Context, cfg config.Config, transport *h
 		return nil, err
 	}
 
-	nsqTargets, err := GetNotifyNSQ(cfg[config.NotifyNSQSubSys])
-	if err != nil {
-		return nil, err
-	}
-
 	postgresTargets, err := GetNotifyPostgres(cfg[config.NotifyPostgresSubSys])
 	if err != nil {
 		return nil, err
@@ -190,26 +185,6 @@ func FetchRegisteredTargets(ctx context.Context, cfg config.Config, transport *h
 			continue
 		}
 		newTarget, err := target.NewNATSTarget(id, args, ctx.Done(), logger.LogOnceIf, test)
-		if err != nil {
-			targetsOffline = true
-			if returnOnTargetError {
-				return nil, err
-			}
-			_ = newTarget.Close()
-		}
-		if err = targetList.Add(newTarget); err != nil {
-			logger.LogIf(context.Background(), err)
-			if returnOnTargetError {
-				return nil, err
-			}
-		}
-	}
-
-	for id, args := range nsqTargets {
-		if !args.Enable {
-			continue
-		}
-		newTarget, err := target.NewNSQTarget(id, args, ctx.Done(), logger.LogOnceIf, test)
 		if err != nil {
 			targetsOffline = true
 			if returnOnTargetError {
@@ -297,7 +272,6 @@ var (
 	DefaultNotificationKVS = map[string]config.KVS{
 		config.NotifyMySQLSubSys:    DefaultMySQLKVS,
 		config.NotifyNATSSubSys:     DefaultNATSKVS,
-		config.NotifyNSQSubSys:      DefaultNSQKVS,
 		config.NotifyPostgresSubSys: DefaultPostgresKVS,
 		config.NotifyRedisSubSys:    DefaultRedisKVS,
 		config.NotifyWebhookSubSys:  DefaultWebhookKVS,
@@ -678,111 +652,6 @@ func GetNotifyNATS(natsKVS map[string]config.KVS, rootCAs *x509.CertPool) (map[s
 		natsTargets[k] = natsArgs
 	}
 	return natsTargets, nil
-}
-
-// DefaultNSQKVS - NSQ KV for config
-var (
-	DefaultNSQKVS = config.KVS{
-		config.KV{
-			Key:   config.Enable,
-			Value: config.EnableOff,
-		},
-		config.KV{
-			Key:   target.NSQAddress,
-			Value: "",
-		},
-		config.KV{
-			Key:   target.NSQTopic,
-			Value: "",
-		},
-		config.KV{
-			Key:   target.NSQTLS,
-			Value: config.EnableOff,
-		},
-		config.KV{
-			Key:   target.NSQTLSSkipVerify,
-			Value: config.EnableOff,
-		},
-		config.KV{
-			Key:   target.NSQQueueDir,
-			Value: "",
-		},
-		config.KV{
-			Key:   target.NSQQueueLimit,
-			Value: "0",
-		},
-	}
-)
-
-// GetNotifyNSQ - returns a map of registered notification 'nsq' targets
-func GetNotifyNSQ(nsqKVS map[string]config.KVS) (map[string]target.NSQArgs, error) {
-	nsqTargets := make(map[string]target.NSQArgs)
-	for k, kv := range mergeTargets(nsqKVS, target.EnvNSQEnable, DefaultNSQKVS) {
-		enableEnv := target.EnvNSQEnable
-		if k != config.Default {
-			enableEnv = enableEnv + config.Default + k
-		}
-
-		enabled, err := config.ParseBool(env.Get(enableEnv, kv.Get(config.Enable)))
-		if err != nil {
-			return nil, err
-		}
-		if !enabled {
-			continue
-		}
-
-		addressEnv := target.EnvNSQAddress
-		if k != config.Default {
-			addressEnv = addressEnv + config.Default + k
-		}
-		nsqdAddress, err := xnet.ParseHost(env.Get(addressEnv, kv.Get(target.NSQAddress)))
-		if err != nil {
-			return nil, err
-		}
-		tlsEnableEnv := target.EnvNSQTLS
-		if k != config.Default {
-			tlsEnableEnv = tlsEnableEnv + config.Default + k
-		}
-		tlsSkipVerifyEnv := target.EnvNSQTLSSkipVerify
-		if k != config.Default {
-			tlsSkipVerifyEnv = tlsSkipVerifyEnv + config.Default + k
-		}
-
-		queueLimitEnv := target.EnvNSQQueueLimit
-		if k != config.Default {
-			queueLimitEnv = queueLimitEnv + config.Default + k
-		}
-		queueLimit, err := strconv.ParseUint(env.Get(queueLimitEnv, kv.Get(target.NSQQueueLimit)), 10, 64)
-		if err != nil {
-			return nil, err
-		}
-
-		topicEnv := target.EnvNSQTopic
-		if k != config.Default {
-			topicEnv = topicEnv + config.Default + k
-		}
-		queueDirEnv := target.EnvNSQQueueDir
-		if k != config.Default {
-			queueDirEnv = queueDirEnv + config.Default + k
-		}
-
-		nsqArgs := target.NSQArgs{
-			Enable:      enabled,
-			NSQDAddress: *nsqdAddress,
-			Topic:       env.Get(topicEnv, kv.Get(target.NSQTopic)),
-			QueueDir:    env.Get(queueDirEnv, kv.Get(target.NSQQueueDir)),
-			QueueLimit:  queueLimit,
-		}
-		nsqArgs.TLS.Enable = env.Get(tlsEnableEnv, kv.Get(target.NSQTLS)) == config.EnableOn
-		nsqArgs.TLS.SkipVerify = env.Get(tlsSkipVerifyEnv, kv.Get(target.NSQTLSSkipVerify)) == config.EnableOn
-
-		if err = nsqArgs.Validate(); err != nil {
-			return nil, err
-		}
-
-		nsqTargets[k] = nsqArgs
-	}
-	return nsqTargets, nil
 }
 
 // DefaultPostgresKVS - default Postgres KV for server config.

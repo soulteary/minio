@@ -141,11 +141,6 @@ func initHelp() {
 			MultipleTargets: true,
 		},
 		config.HelpKV{
-			Key:             config.NotifyNSQSubSys,
-			Description:     "publish bucket notifications to NSQ endpoints",
-			MultipleTargets: true,
-		},
-		config.HelpKV{
 			Key:             config.NotifyMySQLSubSys,
 			Description:     "publish bucket notifications to MySQL databases",
 			MultipleTargets: true,
@@ -194,7 +189,6 @@ func initHelp() {
 		config.LoggerWebhookSubSys:  logger.Help,
 		config.AuditWebhookSubSys:   logger.HelpAudit,
 		config.NotifyNATSSubSys:     notify.HelpNATS,
-		config.NotifyNSQSubSys:      notify.HelpNSQ,
 		config.NotifyMySQLSubSys:    notify.HelpMySQL,
 		config.NotifyPostgresSubSys: notify.HelpPostgres,
 		config.NotifyRedisSubSys:    notify.HelpRedis,

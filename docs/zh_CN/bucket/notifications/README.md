@@ -15,7 +15,6 @@
 | 支持的通知目标    |                             |                                 |
 | :-------------------------------- | --------------------------- | ------------------------------- |
 | [`Redis`](#Redis)                 | [`MySQL`](#MySQL)           | [`NATS`](#NATS)                 |
-| [`NSQ`](#NSQ)                     |                             |                                 |
 | [`Elasticsearch`](#Elasticsearch) | [`PostgreSQL`](#PostgreSQL) | [`Webhooks`](#webhooks)         |
 
 ## 前提条件
@@ -27,7 +26,6 @@
 $ mc admin config get myminio | grep notify
 notify_webhook        publish bucket notifications to webhook endpoints
 notify_nats           publish bucket notifications to NATS endpoints
-notify_nsq            publish bucket notifications to NSQ endpoints
 notify_mysql          publish bucket notifications to MySQL databases
 notify_postgres       publish bucket notifications to Postgres databases
 notify_elasticsearch  publish bucket notifications to Elasticsearch endpoints
@@ -891,95 +889,4 @@ mc cp ~/images.jpg myminio/images
 ```
 mc ls myminio/images-thumbnail
 [2017-02-08 11:39:40 IST]   992B images-thumbnail.jpg
-```
-
-
-<a name="NSQ"></a>
-
-## 发布MinIO事件到NSQ
-
-从[这儿](https://nsq.io/)安装一个NSQ. 或者使用Docker命令启动一个nsq daemon:
-
-```
-docker run --rm -p 4150-4151:4150-4151 nsqio/nsq /nsqd
-```
-
-### 第一步: 添加NSQ endpoint到MinIO
-
-MinIO支持持久事件存储。持久存储将在NSQ broker离线时备份事件，并在broker恢复在线时重播事件。事件存储的目录可以通过`queue_dir`字段设置，存储的最大限制可以通过`queue_limit`设置。例如, `queue_dir`可以设置为`/home/events`, 并且`queue_limit`可以设置为`1000`. 默认情况下 `queue_limit` 是100000.
-
-更新配置前, 使用`mc admin config get`命令获取`notify_nsq`的当前配置.
-
-```
-KEY:
-notify_nsq[:name]  发布存储桶通知到NSQ endpoints
-
-ARGS:
-nsqd_address*    (address)   NSQ server地址，例如 '127.0.0.1:4150'
-topic*           (string)    NSQ topic
-tls              (on|off)    设为'on'代表启用TLS
-tls_skip_verify  (on|off)    跳过TLS证书验证, 默认是"on" (可信的)
-queue_dir        (path)      未发送消息的暂存目录 例如 '/home/events'
-queue_limit      (number)    未发送消息的最大限制, 默认是'100000'
-comment          (sentence)  可选的注释说明
-```
- 
-或者通过环境变量（说明参见上面）
-```
-KEY:
-notify_nsq[:name]  publish bucket notifications to NSQ endpoints
-
-ARGS:
-MINIO_NOTIFY_NSQ_ENABLE*          (on|off)    enable notify_nsq target, default is 'off'
-MINIO_NOTIFY_NSQ_NSQD_ADDRESS*    (address)   NSQ server address e.g. '127.0.0.1:4150'
-MINIO_NOTIFY_NSQ_TOPIC*           (string)    NSQ topic
-MINIO_NOTIFY_NSQ_TLS              (on|off)    set to 'on' to enable TLS
-MINIO_NOTIFY_NSQ_TLS_SKIP_VERIFY  (on|off)    trust server TLS without verification, defaults to "on" (verify)
-MINIO_NOTIFY_NSQ_QUEUE_DIR        (path)      staging dir for undelivered messages e.g. '/home/events'
-MINIO_NOTIFY_NSQ_QUEUE_LIMIT      (number)    maximum limit for undelivered messages, defaults to '100000'
-MINIO_NOTIFY_NSQ_COMMENT          (sentence)  optionally add a comment to this setting
-```
-
-```sh
-$ mc admin config get myminio/ notify_nsq
-notify_nsq:1 nsqd_address="" queue_dir="" queue_limit="0"  tls_enable="off" tls_skip_verify="off" topic=""
-```
-
-使用`mc admin config set`命令更新配置后，重启MinIO Server让配置生效。 如果一切顺利，MinIO Server会在启动时输出一行信息，类似 `SQS ARNs: arn:minio:sqs::1:nsq`。
-
-```sh
-$ mc admin config set myminio notify_nsq:1 nsqd_address="127.0.0.1:4150" queue_dir="" queue_limit="0" tls_enable="off" tls_skip_verify="on" topic="minio"
-```
-
-请注意, 根据你的需要，你可以添加任意多个NSQ daemon endpoint，只要提供NSQ实例的标识符（如上例中的"1"）和每个实例配置参数的信息即可。
-
-### 第二步：使用MinIO客户端启用bucket通知
-
-我们现在可以在一个叫`images`的存储桶上开启事件通知，一旦上有文件上传到存储桶中，事件将被触发。在这里，ARN的值是`arn:minio:sqs::1:nsq`。更多有关ARN的资料，请参考[这里](http://docs.aws.amazon.com/general/latest/gr/aws-arns-and-namespaces.html)。
-
-```
-mc mb myminio/images
-mc event add  myminio/images arn:minio:sqs::1:nsq --suffix .jpg
-mc event list myminio/images
-arn:minio:sqs::1:nsq s3:ObjectCreated:*,s3:ObjectRemoved:* Filter: suffix=”.jpg”
-```
-
-### 第三步: 验证NSQ
-
-最简单的测试是从[nsq github](https://github.com/nsqio/nsq/releases)下载`nsq_tail`。
-
-```
-./nsq_tail -nsqd-tcp-address 127.0.0.1:4150 -topic minio
-```
-
-打开另一个终端，上传一个JPEG图片到`images`存储桶.
-
-```
-mc cp gopher.jpg myminio/images
-```
-
-上传完成后，您应该通过NSQ收到以下事件通知。
-
-```
-{"EventName":"s3:ObjectCreated:Put","Key":"images/gopher.jpg","Records":[{"eventVersion":"2.0","eventSource":"minio:s3","awsRegion":"","eventTime":"2018-10-31T09:31:11Z","eventName":"s3:ObjectCreated:Put","userIdentity":{"principalId":"21EJ9HYV110O8NVX2VMS"},"requestParameters":{"sourceIPAddress":"10.1.1.1"},"responseElements":{"x-amz-request-id":"1562A792DAA53426","x-minio-origin-endpoint":"http://10.0.3.1:9000"},"s3":{"s3SchemaVersion":"1.0","configurationId":"Config","bucket":{"name":"images","ownerIdentity":{"principalId":"21EJ9HYV110O8NVX2VMS"},"arn":"arn:aws:s3:::images"},"object":{"key":"gopher.jpg","size":162023,"eTag":"5337769ffa594e742408ad3f30713cd7","contentType":"image/jpeg","userMetadata":{"content-type":"image/jpeg"},"versionId":"1","sequencer":"1562A792DAA53426"}},"source":{"host":"","port":"","userAgent":"MinIO (linux; amd64) minio-go/v6.0.8 mc/DEVELOPMENT.GOGET"}}]}
 ```
