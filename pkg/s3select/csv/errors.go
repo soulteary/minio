@@ -62,3 +62,16 @@ func errInvalidTextEncodingError() *s3Error {
 		cause:      errors.New("invalid utf8 encoding"),
 	}
 }
+
+// errCSVLineTooLong is returned when a single CSV line exceeds the maximum
+// scan size without a newline. This bounds per-line memory usage and prevents
+// an attacker from OOM-ing the server with input that contains no line breaks
+// (GHSA-h749-fxx7-pwpg / CVE-2026-39414).
+func errCSVLineTooLong() *s3Error {
+	return &s3Error{
+		code:       "CSVParsingError",
+		message:    "Encountered a CSV line that exceeds the maximum supported length. Check the file and try again.",
+		statusCode: 400,
+		cause:      errors.New("csv line exceeds maximum scan size"),
+	}
+}

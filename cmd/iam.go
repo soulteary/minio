@@ -1314,6 +1314,14 @@ func (sys *IAMSys) CreateUser(accessKey string, uinfo madmin.UserInfo) error {
 		return errIAMActionNotAllowed
 	}
 
+	// SECURITY (CVE-2023-27589): never allow creating an IAM user whose access
+	// key collides with the server root credential. Such a user would shadow
+	// the root credential in the IAM subsystem and permanently disable root
+	// access. Matches upstream fix minio/minio#16803.
+	if accessKey == globalActiveCred.AccessKey {
+		return errIAMActionNotAllowed
+	}
+
 	sys.store.lock()
 	defer sys.store.unlock()
 

@@ -137,10 +137,29 @@ func (r *Reader) nextSplit(skip int, dst []byte) ([]byte, error) {
 			return dst, io.EOF
 		}
 	}
-	// Read until next line.
-	in, err := r.buf.ReadBytes('\n')
-	dst = append(dst, in...)
-	return dst, err
+	// Read until the next newline, but bound how much a single line may
+	// consume. The previous implementation used bufio.Reader.ReadBytes('\n'),
+	// which is unbounded: input containing no newline (for example a small
+	// gzip object that decompresses to gigabytes of data with no line breaks)
+	// would be buffered entirely into one allocation and OOM the server.
+	// Scan at most csvSplitSize bytes for the terminating newline and fail
+	// closed past that limit. The bulk of each block is still read in one shot
+	// via io.ReadFull above, so this byte-wise scan only covers the tail of the
+	// current line and does not regress throughput for well-formed CSV.
+	// Backport of GHSA-h749-fxx7-pwpg / CVE-2026-39414.
+	for i := 0; i < csvSplitSize; i++ {
+		b, err := r.buf.ReadByte()
+		if err != nil {
+			// io.EOF indicates the final line had no trailing newline; as
+			// before, the last block is returned together with the error.
+			return dst, err
+		}
+		dst = append(dst, b)
+		if b == '\n' {
+			return dst, nil
+		}
+	}
+	return dst, errCSVLineTooLong()
 }
 
 // csvSplitSize is the size of each block.

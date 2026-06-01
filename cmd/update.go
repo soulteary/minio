@@ -475,18 +475,6 @@ func getDownloadURL(releaseTag string) (downloadURL string) {
 	return minioReleaseURL + "minio"
 }
 
-func getUpdateReaderFromFile(u *url.URL) (io.ReadCloser, error) {
-	r, err := os.Open(u.Path)
-	if err != nil {
-		return nil, AdminError{
-			Code:       AdminUpdateUnexpectedFailure,
-			Message:    err.Error(),
-			StatusCode: http.StatusInternalServerError,
-		}
-	}
-	return r, nil
-}
-
 func getUpdateReaderFromURL(u *url.URL, transport http.RoundTripper, mode string) (io.ReadCloser, error) {
 	clnt := &http.Client{
 		Transport: transport,
@@ -529,9 +517,17 @@ func doUpdate(u *url.URL, lrTime time.Time, sha256Sum []byte, releaseInfo string
 			return err
 		}
 	} else {
-		reader, err = getUpdateReaderFromFile(u)
-		if err != nil {
-			return err
+		// SECURITY (CVE-2022-35919): never fall back to reading a local
+		// filesystem path here. An admin authorized for admin:ServerUpdate could
+		// otherwise request an arbitrary path (e.g. "mc admin update alias/
+		// /etc/passwd"); the file would be opened and its contents leaked back
+		// in the (verification) error response, allowing arbitrary file read as
+		// the MinIO process. Only http/https sources are permitted. Matches
+		// upstream fix minio/minio#15429.
+		return AdminError{
+			Code:       AdminUpdateUnexpectedFailure,
+			Message:    fmt.Sprintf("unsupported URL style %s, only http and https URLs are supported as an update source", u.String()),
+			StatusCode: http.StatusBadRequest,
 		}
 	}
 

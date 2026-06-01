@@ -84,6 +84,44 @@ func TestRead(t *testing.T) {
 	}
 }
 
+// TestReadLineTooLong verifies that a CSV input containing a single line far
+// longer than the per-line scan cap (and no newline) fails with a bounded
+// error instead of buffering the entire input into memory. This guards the
+// fix for GHSA-h749-fxx7-pwpg / CVE-2026-39414 (unbounded memory allocation
+// in S3 Select CSV parsing).
+func TestReadLineTooLong(t *testing.T) {
+	// A single ~384KB "line" with no record delimiter at all.
+	huge := bytes.Repeat([]byte("a"), 3*csvSplitSize)
+
+	r, err := NewReader(ioutil.NopCloser(bytes.NewReader(huge)), &ReaderArgs{
+		FileHeaderInfo:             none,
+		RecordDelimiter:            "\n",
+		FieldDelimiter:             ",",
+		QuoteCharacter:             defaultQuoteCharacter,
+		QuoteEscapeCharacter:       defaultQuoteEscapeCharacter,
+		CommentCharacter:           defaultCommentCharacter,
+		AllowQuotedRecordDelimiter: false,
+		unmarshaled:                true,
+	})
+	if err != nil {
+		// Depending on header handling the bounded error may surface here.
+		return
+	}
+	defer r.Close()
+
+	var record sql.Record
+	var readErr error
+	for {
+		record, readErr = r.Read(record)
+		if readErr != nil {
+			break
+		}
+	}
+	if readErr == nil || readErr == io.EOF {
+		t.Fatalf("expected a bounded parsing error for an over-long CSV line, got %v", readErr)
+	}
+}
+
 type tester interface {
 	Fatal(...interface{})
 }

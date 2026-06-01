@@ -337,3 +337,34 @@ func TestParseReleaseData(t *testing.T) {
 		}
 	}
 }
+
+// TestDoUpdateRejectsLocalFileSource guards the fix for CVE-2022-35919: the
+// server update path must never read a local filesystem path as an update
+// source, otherwise an admin authorized for admin:ServerUpdate could read
+// arbitrary files (e.g. "mc admin update alias/ /etc/passwd").
+func TestDoUpdateRejectsLocalFileSource(t *testing.T) {
+	secret := "TOP-SECRET-ROOT-PASSWORD-should-never-be-read"
+	f, err := ioutil.TempFile("", "minio-update-traversal-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(f.Name())
+	if _, err := f.WriteString(secret); err != nil {
+		t.Fatal(err)
+	}
+	f.Close()
+
+	// A bare path (no http/https scheme), as produced by "mc admin update <path>".
+	u := &url.URL{Path: f.Name()}
+
+	err = doUpdate(u, time.Now().UTC(), nil, "", "")
+	if err == nil {
+		t.Fatal("expected doUpdate to reject a local filesystem update source, got nil error")
+	}
+	if strings.Contains(err.Error(), secret) {
+		t.Fatalf("update error leaked local file contents: %v", err)
+	}
+	if !strings.Contains(err.Error(), "only http and https URLs are supported") {
+		t.Fatalf("expected unsupported-scheme error, got: %v", err)
+	}
+}
