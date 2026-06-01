@@ -8,7 +8,7 @@ require (
 	github.com/apache/thrift v0.23.0
 	github.com/bcicen/jstream v1.0.1
 	github.com/beevik/ntp v1.5.0
-	github.com/bits-and-blooms/bloom/v3 v3.7.0
+	github.com/bits-and-blooms/bloom/v3 v3.7.1
 	github.com/cespare/xxhash/v2 v2.3.0
 	github.com/cheggaaa/pb v1.0.29
 	github.com/coredns/coredns v1.14.3
@@ -80,7 +80,7 @@ require (
 	github.com/Azure/go-ntlmssp v0.1.1 // indirect
 	github.com/armon/go-metrics v0.4.1 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
-	github.com/bits-and-blooms/bitset v1.10.0 // indirect
+	github.com/bits-and-blooms/bitset v1.24.4 // indirect
 	github.com/cenkalti/backoff/v4 v4.3.0 // indirect
 	github.com/clipperhouse/uax29/v2 v2.7.0 // indirect
 	github.com/coreos/go-semver v0.3.1 // indirect
