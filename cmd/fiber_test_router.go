@@ -37,7 +37,7 @@ func registerBucketLevelFuncFiber(objectRules, bucketRules *[]routeRule, api obj
 		case "HeadObject":
 			*objectRules = append(*objectRules, s3Route([]string{http.MethodHead}, "headobject", false, api.HeadObjectHandler, nil, nil))
 		case "GetObject":
-			*objectRules = append(*objectRules, s3Route([]string{http.MethodGet}, "getobject", true, api.GetObjectHandler, nil, nil))
+			*objectRules = append(*objectRules, s3RouteStream([]string{http.MethodGet}, "getobject", true, api.GetObjectHandler, nil, nil))
 		case "PutObject":
 			*objectRules = append(*objectRules, s3Route([]string{http.MethodPut}, "putobject", true, api.PutObjectHandler, nil, nil))
 		case "DeleteObject":
@@ -149,16 +149,12 @@ func makeTestS3DispatchHandler(rules []routeRule) fiber.Handler {
 	}
 }
 
-// testUnknownContentLength is set by fiberHTTPTestHandler for httptest requests
-// that intentionally omit Content-Length. adaptor otherwise buffers the body
-// and assigns a positive length; legacy handlers rely on ContentLength == -1.
-var testUnknownContentLength bool
-
-// testDeclaredContentLength preserves the client-declared Content-Length through
-// adaptor.FiberApp, which otherwise replaces it with the buffered body size.
-const testContentLengthUnset = int64(-2)
-
-var testDeclaredContentLength = testContentLengthUnset
+// testContentLengthKey is a per-request fasthttp user-value key used by
+// fiberHTTPTestHandler to carry the client-declared Content-Length (or -1 for an
+// intentionally unknown length) into fiberRequest. It is request-scoped to keep
+// concurrent tests free of data races; adaptor otherwise buffers the body and
+// assigns a positive length, while legacy handlers rely on ContentLength == -1.
+type testContentLengthKey struct{}
 
 // fiberHTTPTestHandler wraps a Fiber app for httptest/recorder usage.
 //
@@ -170,13 +166,6 @@ func fiberHTTPTestHandler(app *fiber.App) http.Handler {
 		if r.RequestURI == "" {
 			r.RequestURI = r.URL.RequestURI()
 		}
-		if r.ContentLength < 0 {
-			testUnknownContentLength = true
-			defer func() { testUnknownContentLength = false }()
-		} else {
-			testDeclaredContentLength = r.ContentLength
-			defer func() { testDeclaredContentLength = testContentLengthUnset }()
-		}
 
 		fctx := new(fasthttp.RequestCtx)
 		fasthttpReq, err := fiberTestFasthttpRequest(r)
@@ -186,6 +175,12 @@ func fiberHTTPTestHandler(app *fiber.App) http.Handler {
 		}
 		remoteAddr, _ := net.ResolveTCPAddr("tcp", "127.0.0.1:0")
 		fctx.Init(fasthttpReq, remoteAddr, nil)
+
+		if r.ContentLength < 0 {
+			fctx.SetUserValue(testContentLengthKey{}, int64(-1))
+		} else {
+			fctx.SetUserValue(testContentLengthKey{}, r.ContentLength)
+		}
 
 		app.Handler()(fctx)
 

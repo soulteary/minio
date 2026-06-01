@@ -52,7 +52,10 @@ func rejectedRouteRule(r rejectedAPI) routeRule {
 	return routeRule{
 		methods: r.methods,
 		queries: queriesFromRejected(r.queries),
-		handler: collectAPIStatsFiber(r.api, httpTraceAllFiber(notImplementedHandlerFiber)),
+		// handler is already wrapped with stats + trace below; skipTrace avoids
+		// dispatchRules adding a second trace wrapper (double trace publish).
+		handler:   collectAPIStatsFiber(r.api, httpTraceAllFiber(notImplementedHandlerFiber)),
+		skipTrace: true,
 	}
 }
 
@@ -81,7 +84,23 @@ func s3Route(methods []string, api string, traceHdrs bool, h func(http.ResponseW
 		methods:     methods,
 		queries:     queries,
 		headerRegex: headerRegex,
-		handler:     wrapS3Handler(api, traceHdrs, toMinioHandler(h)),
+		// wrapS3Handler already applies stats + maxClients + trace; skipTrace
+		// prevents dispatchRules from wrapping a second trace (double publish).
+		handler:   wrapS3Handler(api, traceHdrs, toMinioHandler(h)),
+		skipTrace: true,
+	}
+}
+
+// s3RouteStream is like s3Route but bridges the handler with a streaming
+// response writer, so large response bodies (e.g. GetObject) are streamed to
+// the client instead of being fully buffered in memory.
+func s3RouteStream(methods []string, api string, traceHdrs bool, h func(http.ResponseWriter, *http.Request), queries map[string]string, headerRegex map[string]*regexp.Regexp) routeRule {
+	return routeRule{
+		methods:     methods,
+		queries:     queries,
+		headerRegex: headerRegex,
+		handler:     wrapS3Handler(api, traceHdrs, toMinioStreamHandler(h)),
+		skipTrace:   true,
 	}
 }
 
@@ -122,7 +141,7 @@ func objectS3APIRules(api objectAPIHandlers) []routeRule {
 			qm("select", "", "select-type", "2"), nil),
 		s3Route([]string{http.MethodGet}, "getobjectretention", false, api.GetObjectRetentionHandler, qm("retention", ""), nil),
 		s3Route([]string{http.MethodGet}, "getobjectlegalhold", false, api.GetObjectLegalHoldHandler, qm("legal-hold", ""), nil),
-		s3Route([]string{http.MethodGet}, "getobject", true, api.GetObjectHandler, nil, nil),
+		s3RouteStream([]string{http.MethodGet}, "getobject", true, api.GetObjectHandler, nil, nil),
 		s3Route([]string{http.MethodPut}, "copyobject", false, api.CopyObjectHandler, nil,
 			map[string]*regexp.Regexp{xhttp.AmzCopySource: fiberAmzCopySourceRegex}),
 		s3Route([]string{http.MethodPut}, "putobjectretention", false, api.PutObjectRetentionHandler, qm("retention", ""), nil),
@@ -226,12 +245,25 @@ func registerAPIRouterFiber(app *fiber.App) {
 	bucketRules := append(rejectedBucketAPIRules(), bucketS3APIRules(api)...)
 
 	objectDispatch, bucketDispatch := makeBucketObjectDispatchHandlers(objectRules, bucketRules)
+	// Raw object handler (without the path-style empty-wildcard check) used to
+	// dispatch virtual-host-style object operations, where the whole path is the
+	// object key.
+	objectHandler := makeS3DispatchHandler(objectRules)
 	rootDispatch := makeS3DispatchHandler(rootS3APIRules(api))
 
 	listBucketsDoubleSlash := wrapS3Handler("listbuckets", false, toMinioHandler(api.ListBucketsHandler))
 	notFoundHandler := collectAPIStatsFiber("notfound", httpTraceAllFiber(errorResponseHandlerFiber))
 
 	apiGroup := app.Group("", vhostBucketMiddleware)
+	// Virtual-host-style requests (bucket in the Host header) must be dispatched
+	// before the path-style routes, which would otherwise treat the first path
+	// segment as the bucket name and lose the object key.
+	apiGroup.Use(func(c fiber.Ctx) error {
+		if handled, err := vhostObjectDispatch(c, objectHandler, bucketDispatch); handled {
+			return err
+		}
+		return c.Next()
+	})
 	apiGroup.All("/:bucket/*", objectDispatch)
 	apiGroup.All("/:bucket", bucketDispatch)
 

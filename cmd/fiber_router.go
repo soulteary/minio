@@ -96,7 +96,31 @@ func corsMiddlewareFiber() fiber.Handler {
 	}
 }
 
-// globalFiberHandlers mirrors globalHandlers using Fiber middleware adapted from net/http.
+// addSecurityHeadersFiber is the native-Fiber equivalent of addSecurityHeaders.
+// Converting it avoids a fasthttp<->net/http adaptor round-trip (which also
+// spawns a goroutine and materializes the request body via PostBody) for what
+// is a pair of static response headers.
+func addSecurityHeadersFiber(c fiber.Ctx) error {
+	c.Set("X-XSS-Protection", "1; mode=block")
+	c.Set("Content-Security-Policy", "block-all-mixed-content")
+	return c.Next()
+}
+
+// addCustomHeadersFiber is the native-Fiber equivalent of addCustomHeaders. It
+// sets x-amz-request-id directly on the response header where downstream
+// handlers (via fiberRequestID / seedResponseHeader) read it back.
+func addCustomHeadersFiber(c fiber.Ctx) error {
+	c.Set(xhttp.AmzRequestID, mustGetRequestID(UTCNow()))
+	return c.Next()
+}
+
+// globalFiberHandlers mirrors globalHandlers using Fiber middleware adapted from
+// net/http. Simple, body-independent header middlewares are implemented
+// natively to cut adaptor overhead; the remaining ones (auth, size limits,
+// stats, forwarding, etc.) still use adaptor.HTTPMiddleware. NOTE: until those
+// are also native, the first adaptor middleware materializes the request body
+// (NewFastHTTPHandler -> ConvertRequest -> PostBody), so fully streamed uploads
+// require converting the rest of this chain as well.
 var globalFiberHandlers = []fiber.Handler{
 	adaptor.HTTPMiddleware(filterReservedMetadata),
 	adaptor.HTTPMiddleware(setSSETLSHandler),
@@ -111,8 +135,8 @@ var globalFiberHandlers = []fiber.Handler{
 	adaptor.HTTPMiddleware(setHTTPStatsHandler),
 	adaptor.HTTPMiddleware(setRequestValidityHandler),
 	adaptor.HTTPMiddleware(setBucketForwardingHandler),
-	adaptor.HTTPMiddleware(addSecurityHeaders),
-	adaptor.HTTPMiddleware(addCustomHeaders),
+	addSecurityHeadersFiber,
+	addCustomHeadersFiber,
 	adaptor.HTTPMiddleware(setRedirectHandler),
 }
 
@@ -121,6 +145,11 @@ func newFiberApp() *fiber.App {
 		BodyLimit:    int(requestMaxBodySize),
 		UnescapePath: false, // preserve encoded path segments (mux UseEncodedPath equivalent)
 		ServerHeader: "MinIO",
+		// Stream request bodies instead of buffering them fully in memory. This
+		// keeps large uploads from being held entirely in RAM once the request
+		// reaches a native (non-adaptor) handler; the bridge in fiberRequest
+		// wires the body to this stream when available.
+		StreamRequestBody: true,
 	})
 	return app
 }

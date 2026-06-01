@@ -255,6 +255,43 @@ func Trace(f http.HandlerFunc, logBody bool, w http.ResponseWriter, r *http.Requ
 	return t
 }
 
+// fiberRequestHeaders builds an http.Header snapshot of the Fiber request
+// headers, mirroring the net/http Trace path (Host + Content-Length /
+// Transfer-Encoding are always present).
+func fiberRequestHeaders(c fiber.Ctx) http.Header {
+	h := make(http.Header)
+	c.Request().Header.VisitAll(func(key, value []byte) {
+		h.Add(string(key), string(value))
+	})
+	h.Set("Host", requestHost(c))
+	if te := c.Get("Transfer-Encoding"); te != "" {
+		h.Set("Transfer-Encoding", te)
+	} else if h.Get("Content-Length") == "" {
+		h.Set("Content-Length", strconv.Itoa(c.Request().Header.ContentLength()))
+	}
+	return h
+}
+
+// fiberResponseHeaders builds an http.Header snapshot of the Fiber response.
+func fiberResponseHeaders(c fiber.Ctx) http.Header {
+	h := make(http.Header)
+	c.Response().Header.VisitAll(func(key, value []byte) {
+		h.Add(string(key), string(value))
+	})
+	return h
+}
+
+// headerByteSize returns the approximate on-wire byte size of a header set.
+func headerByteSize(h http.Header) int {
+	sz := 0
+	for k, vv := range h {
+		for _, v := range vv {
+			sz += len(k) + len(v)
+		}
+	}
+	return sz
+}
+
 // TraceFiber gets trace of a Fiber HTTP request.
 func TraceFiber(f MinioHandler, logBody bool, c fiber.Ctx) trace.Info {
 	name := getOpName(runtime.FuncForPC(reflect.ValueOf(f).Pointer()).Name())
@@ -276,6 +313,22 @@ func TraceFiber(f MinioHandler, logBody bool, c fiber.Ctx) trace.Info {
 		}
 	}
 
+	reqHeaders := fiberRequestHeaders(c)
+
+	// Capture the request body before invoking the handler so it reflects the
+	// client payload regardless of what the handler does with it. Use the RAW
+	// fasthttp body rather than fiber's c.Body(): the latter decodes per
+	// Content-Encoding (corrupting e.g. aws-chunked payloads) and can emit a
+	// 415 side-effect for unsupported encodings.
+	rawReqBody := c.Request().Body()
+	reqBodyLen := len(rawReqBody)
+	reqBody := logger.BodyPlaceHolder
+	if logBody {
+		cp := make([]byte, len(rawReqBody))
+		copy(cp, rawReqBody)
+		reqBody = cp
+	}
+
 	bucket := pathParamBucket(c)
 	object := pathParamObject(c)
 	rq := trace.RequestInfo{
@@ -285,6 +338,7 @@ func TraceFiber(f MinioHandler, logBody bool, c fiber.Ctx) trace.Info {
 		Path:     SlashSeparator + pathJoin(bucket, object),
 		RawQuery: redactLDAPPwd(string(c.Request().URI().QueryString())),
 		Client:   handlers.GetSourceIPFiber(c),
+		Headers:  reqHeaders,
 	}
 
 	start := time.Now()
@@ -295,20 +349,37 @@ func TraceFiber(f MinioHandler, logBody bool, c fiber.Ctx) trace.Info {
 		status = http.StatusOK
 	}
 
+	respBody := logger.BodyPlaceHolder
+	respBodyLen := 0
+	// Avoid touching the buffered body when the response is streamed
+	// (SetBodyStream); reading it there would drain the stream before the
+	// client receives it.
+	if c.Response().BodyStream() == nil {
+		respBodyLen = len(c.Response().Body())
+		if logBody {
+			src := c.Response().Body()
+			cp := make([]byte, len(src))
+			copy(cp, src)
+			respBody = cp
+		}
+	}
+
+	rq.Body = reqBody
+
 	rs := trace.ResponseInfo{
 		Time:       time.Now().UTC(),
 		StatusCode: status,
-		Body:       logger.BodyPlaceHolder,
+		Headers:    fiberResponseHeaders(c),
+		Body:       respBody,
 	}
 
 	t.ReqInfo = rq
 	t.RespInfo = rs
 	t.CallStats = trace.CallStats{
-		Latency:         time.Since(start),
-		InputBytes:      len(c.Body()),
-		OutputBytes:     len(c.Response().Body()),
+		Latency:         rs.Time.Sub(start),
+		InputBytes:      reqBodyLen + headerByteSize(reqHeaders),
+		OutputBytes:     respBodyLen,
 		TimeToFirstByte: time.Since(start),
 	}
-	_ = logBody
 	return t
 }
