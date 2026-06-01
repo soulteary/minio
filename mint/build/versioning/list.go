@@ -31,8 +31,9 @@ import (
 )
 
 // Test regular listing result with simple use cases:
-//   Upload an object ten times, delete it once (delete marker)
-//   and check listing result
+//
+//	Upload an object ten times, delete it once (delete marker)
+//	and check listing result
 func testListObjectVersionsSimple() {
 	startTime := time.Now()
 	function := "testListObjectVersionsSimple"
@@ -262,9 +263,9 @@ func testListObjectVersionsWithPrefixAndDelimiter() {
 	gotResult := simplifyListingResult(result)
 	expectedResult := listResult{
 		versions: []objectResult{
-			objectResult{name: "dir/dir/object", isLatest: true},
-			objectResult{name: "dir/object", isLatest: true},
-			objectResult{name: "object", isLatest: true},
+			{name: "dir/dir/object", isLatest: true},
+			{name: "dir/object", isLatest: true},
+			{name: "object", isLatest: true},
 		}}
 	if !reflect.DeepEqual(gotResult, expectedResult) {
 		failureLog(function, args, startTime, "", "ListObjectVersions returned unexpected listing result", nil).Fatal()
@@ -284,7 +285,7 @@ func testListObjectVersionsWithPrefixAndDelimiter() {
 	gotResult = simplifyListingResult(result)
 	expectedResult = listResult{
 		versions: []objectResult{
-			objectResult{name: "object", isLatest: true},
+			{name: "object", isLatest: true},
 		},
 		commonPrefixes: []string{"dir/"}}
 	if !reflect.DeepEqual(gotResult, expectedResult) {
@@ -306,7 +307,7 @@ func testListObjectVersionsWithPrefixAndDelimiter() {
 	gotResult = simplifyListingResult(result)
 	expectedResult = listResult{
 		versions: []objectResult{
-			objectResult{name: "dir/object", isLatest: true},
+			{name: "dir/object", isLatest: true},
 		},
 		commonPrefixes: []string{"dir/dir/"}}
 	if !reflect.DeepEqual(gotResult, expectedResult) {
@@ -408,8 +409,8 @@ func testListObjectVersionsKeysContinuation() {
 	}
 
 	expectedResult := []resultPage{
-		resultPage{versions: []string{"testobject-0", "testobject-1", "testobject-2", "testobject-3", "testobject-4"}, nextKeyMarker: "testobject-4", lastPage: false},
-		resultPage{versions: []string{"testobject-5", "testobject-6", "testobject-7", "testobject-8", "testobject-9"}, nextKeyMarker: "", lastPage: true},
+		{versions: []string{"testobject-0", "testobject-1", "testobject-2", "testobject-3", "testobject-4"}, nextKeyMarker: "testobject-4", lastPage: false},
+		{versions: []string{"testobject-5", "testobject-6", "testobject-7", "testobject-8", "testobject-9"}, nextKeyMarker: "", lastPage: true},
 	}
 
 	if !reflect.DeepEqual(expectedResult, gotResult) {
@@ -517,8 +518,8 @@ func testListObjectVersionsVersionIDContinuation() {
 	}
 
 	expectedResult := []resultPage{
-		resultPage{versions: []string{"testobject", "testobject", "testobject", "testobject", "testobject"}, nextVersionIDMarker: gotNextVersionIDMarker, lastPage: false},
-		resultPage{versions: []string{"testobject", "testobject", "testobject", "testobject", "testobject"}, lastPage: true},
+		{versions: []string{"testobject", "testobject", "testobject", "testobject", "testobject"}, nextVersionIDMarker: gotNextVersionIDMarker, lastPage: false},
+		{versions: []string{"testobject", "testobject", "testobject", "testobject", "testobject"}, lastPage: true},
 	}
 
 	if !reflect.DeepEqual(expectedResult, gotResult) {
@@ -617,8 +618,8 @@ func testListObjectsVersionsWithEmptyDirObject() {
 	gotResult := simplifyListingResult(result)
 	expectedResult := listResult{
 		versions: []objectResult{
-			objectResult{name: "dir/", etag: "\"d41d8cd98f00b204e9800998ecf8427e\"", isLatest: true},
-			objectResult{name: "dir/object", etag: "\"d41d8cd98f00b204e9800998ecf8427e\"", isLatest: true},
+			{name: "dir/", etag: "\"d41d8cd98f00b204e9800998ecf8427e\"", isLatest: true},
+			{name: "dir/object", etag: "\"d41d8cd98f00b204e9800998ecf8427e\"", isLatest: true},
 		}}
 	if !reflect.DeepEqual(gotResult, expectedResult) {
 		failureLog(function, args, startTime, "", "ListObjectVersions returned unexpected listing result", nil).Fatal()

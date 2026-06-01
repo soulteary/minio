@@ -226,14 +226,14 @@ func (f *mintJSONFormatter) Format(entry *log.Entry) ([]byte, error) {
 
 // Secure Go implementations of modern TLS ciphers
 // The following ciphers are excluded because:
-//  - RC4 ciphers:              RC4 is broken
-//  - 3DES ciphers:             Because of the 64 bit blocksize of DES (Sweet32)
-//  - CBC-SHA256 ciphers:       No countermeasures against Lucky13 timing attack
-//  - CBC-SHA ciphers:          Legacy ciphers (SHA-1) and non-constant time
-//                              implementation of CBC.
-//                              (CBC-SHA ciphers can be enabled again if required)
-//  - RSA key exchange ciphers: Disabled because of dangerous PKCS1-v1.5 RSA
-//                              padding scheme. See Bleichenbacher attacks.
+//   - RC4 ciphers:              RC4 is broken
+//   - 3DES ciphers:             Because of the 64 bit blocksize of DES (Sweet32)
+//   - CBC-SHA256 ciphers:       No countermeasures against Lucky13 timing attack
+//   - CBC-SHA ciphers:          Legacy ciphers (SHA-1) and non-constant time
+//     implementation of CBC.
+//     (CBC-SHA ciphers can be enabled again if required)
+//   - RSA key exchange ciphers: Disabled because of dangerous PKCS1-v1.5 RSA
+//     padding scheme. See Bleichenbacher attacks.
 var supportedCipherSuites = []uint16{
 	tls.TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305,
 	tls.TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305,

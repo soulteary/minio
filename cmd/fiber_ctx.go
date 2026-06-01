@@ -625,4 +625,3 @@ func (w *fiberResponseWriter) finalize() {
 		w.WriteHeader(w.status)
 	}
 }
-
