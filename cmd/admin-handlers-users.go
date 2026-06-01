@@ -495,19 +495,32 @@ func (a adminAPIHandlers) AddServiceAccount(w http.ResponseWriter, r *http.Reque
 
 	targetUser = createReq.TargetUser
 
-	// Need permission if we are creating a service acccount
-	// for a user <> to the request sender
-	if targetUser != "" && targetUser != cred.AccessKey {
-		if !globalIAMSys.IsAllowed(iampolicy.Args{
-			AccountName:     cred.AccessKey,
-			Action:          iampolicy.CreateServiceAccountAdminAction,
-			ConditionValues: getConditionValues(r, "", cred.AccessKey, claims),
-			IsOwner:         owner,
-			Claims:          claims,
-		}) {
-			writeErrorResponseJSON(ctx, w, errorCodes.ToAPIErr(ErrAccessDenied), r.URL)
-			return
-		}
+	// SECURITY (privilege escalation, GHSA-jjjj-jwhf-8rgr): every service
+	// account creation must be authorized.
+	//   - Creating for ANOTHER user requires the CreateServiceAccount admin
+	//     action (a positive allow).
+	//   - Creating for SELF is an "own account" operation: allowed by default
+	//     unless explicitly denied (DenyOnly), so a regular user can still mint
+	//     their own access keys without holding admin:CreateServiceAccount.
+	// Crucially, when the requesting credential is itself restricted by an
+	// inline session policy (a service account or STS credential), that session
+	// policy must positively grant the action - this is enforced in
+	// IsAllowedServiceAccount/IsAllowedSTS by evaluating the sub policy with
+	// DenyOnly=false. Without this check the self-creation path performed no
+	// authorization at all, letting a credential narrowly scoped by a session
+	// policy mint a brand new, less-restricted service account for its parent
+	// user and thereby escalate to the parent's full privileges.
+	ownAccountOp := targetUser == "" || targetUser == cred.AccessKey
+	if !globalIAMSys.IsAllowed(iampolicy.Args{
+		AccountName:     cred.AccessKey,
+		Action:          iampolicy.CreateServiceAccountAdminAction,
+		ConditionValues: getConditionValues(r, "", cred.AccessKey, claims),
+		IsOwner:         owner,
+		Claims:          claims,
+		DenyOnly:        ownAccountOp,
+	}) {
+		writeErrorResponseJSON(ctx, w, errorCodes.ToAPIErr(ErrAccessDenied), r.URL)
+		return
 	}
 
 	if globalLDAPConfig.Enabled && targetUser != "" {

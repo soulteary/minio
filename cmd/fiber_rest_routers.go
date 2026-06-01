@@ -50,6 +50,23 @@ func internalRaw(h func(http.ResponseWriter, *http.Request)) MinioHandler {
 	return toMinioHandler(h)
 }
 
+// internalRawStream is the streaming counterpart of internalRaw. It must be
+// used for internal handlers that produce an unbounded (infinite event stream)
+// or long-lived / large streamed response: the buffered bridge cannot flush
+// mid-handler (responseBodyWriter has no Flush), so such handlers would buffer
+// their output in memory, never deliver it incrementally, defeat their
+// keepalive, and (for infinite streams) never terminate on peer disconnect.
+func internalRawStream(h func(http.ResponseWriter, *http.Request)) MinioHandler {
+	return toMinioStreamHandler(h)
+}
+
+// internalHdrStream is the streaming counterpart of internalHdr; it preserves
+// the header-only trace wrapping (TraceFiber is stream-aware and does not drain
+// a SetBodyStream body) while bridging the handler through the streaming path.
+func internalHdrStream(h func(http.ResponseWriter, *http.Request)) MinioHandler {
+	return httpTraceHdrsFiber(toMinioStreamHandler(h))
+}
+
 func registerStorageRESTHandlersFiber(app *fiber.App, endpointServerPools EndpointServerPools) {
 	for _, ep := range endpointServerPools {
 		for _, endpoint := range ep.Endpoints {
@@ -66,7 +83,7 @@ func registerStorageRESTHandlersFiber(app *fiber.App, endpointServerPools Endpoi
 
 			registerInternalPOST(app, base+storageRESTMethodHealth, internalHdr(server.HealthHandler), nil)
 			registerInternalPOST(app, base+storageRESTMethodDiskInfo, internalHdr(server.DiskInfoHandler), nil)
-			registerInternalPOST(app, base+storageRESTMethodNSScanner, internalHdr(server.NSScannerHandler), nil)
+			registerInternalPOST(app, base+storageRESTMethodNSScanner, internalHdrStream(server.NSScannerHandler), nil)
 			registerInternalPOST(app, base+storageRESTMethodMakeVol, internalHdr(server.MakeVolHandler), queryRules(storageRESTVolume))
 			registerInternalPOST(app, base+storageRESTMethodMakeVolBulk, internalHdr(server.MakeVolBulkHandler), queryRules(storageRESTVolumes))
 			registerInternalPOST(app, base+storageRESTMethodStatVol, internalHdr(server.StatVolHandler), queryRules(storageRESTVolume))
@@ -87,15 +104,15 @@ func registerStorageRESTHandlersFiber(app *fiber.App, endpointServerPools Endpoi
 
 			registerInternalPOST(app, base+storageRESTMethodReadAll, internalHdr(server.ReadAllHandler), queryRules(storageRESTVolume, storageRESTFilePath))
 			registerInternalPOST(app, base+storageRESTMethodReadFile, internalHdr(server.ReadFileHandler), queryRules(storageRESTVolume, storageRESTFilePath, storageRESTOffset, storageRESTLength, storageRESTBitrotAlgo, storageRESTBitrotHash))
-			registerInternalPOST(app, base+storageRESTMethodReadFileStream, internalHdr(server.ReadFileStreamHandler), queryRules(storageRESTVolume, storageRESTFilePath, storageRESTOffset, storageRESTLength))
+			registerInternalPOST(app, base+storageRESTMethodReadFileStream, internalHdrStream(server.ReadFileStreamHandler), queryRules(storageRESTVolume, storageRESTFilePath, storageRESTOffset, storageRESTLength))
 			registerInternalPOST(app, base+storageRESTMethodListDir, internalHdr(server.ListDirHandler), queryRules(storageRESTVolume, storageRESTDirPath, storageRESTCount))
 
 			registerInternalPOST(app, base+storageRESTMethodDeleteVersions, internalHdr(server.DeleteVersionsHandler), queryRules(storageRESTVolume, storageRESTTotalVersions))
 			registerInternalPOST(app, base+storageRESTMethodDeleteFile, internalHdr(server.DeleteFileHandler), queryRules(storageRESTVolume, storageRESTFilePath, storageRESTRecursive))
 
 			registerInternalPOST(app, base+storageRESTMethodRenameFile, internalHdr(server.RenameFileHandler), queryRules(storageRESTSrcVolume, storageRESTSrcPath, storageRESTDstVolume, storageRESTDstPath))
-			registerInternalPOST(app, base+storageRESTMethodVerifyFile, internalHdr(server.VerifyFileHandler), queryRules(storageRESTVolume, storageRESTFilePath))
-			registerInternalPOST(app, base+storageRESTMethodWalkDir, internalHdr(server.WalkDirHandler), queryRules(storageRESTVolume, storageRESTDirPath, storageRESTRecursive))
+			registerInternalPOST(app, base+storageRESTMethodVerifyFile, internalHdrStream(server.VerifyFileHandler), queryRules(storageRESTVolume, storageRESTFilePath))
+			registerInternalPOST(app, base+storageRESTMethodWalkDir, internalHdrStream(server.WalkDirHandler), queryRules(storageRESTVolume, storageRESTDirPath, storageRESTRecursive))
 		}
 	}
 }
@@ -132,10 +149,13 @@ func registerPeerRESTHandlersFiber(app *fiber.App) {
 
 	registerInternalPOST(app, base+peerRESTMethodStartProfiling, internalAll(server.StartProfilingHandler), queryRules(peerRESTProfiler))
 	registerInternalPOST(app, base+peerRESTMethodDownloadProfilingData, internalHdr(server.DownloadProfilingDataHandler), nil)
-	registerInternalPOST(app, base+peerRESTMethodTrace, internalRaw(server.TraceHandler), nil)
-	registerInternalPOST(app, base+peerRESTMethodListen, internalHdr(server.ListenHandler), nil)
+	// Trace / Listen / Log are unbounded event streams: they must use the
+	// streaming bridge or the buffered bridge would never deliver events, never
+	// terminate on peer disconnect, and leak a goroutine + memory per request.
+	registerInternalPOST(app, base+peerRESTMethodTrace, internalRawStream(server.TraceHandler), nil)
+	registerInternalPOST(app, base+peerRESTMethodListen, internalHdrStream(server.ListenHandler), nil)
 	registerInternalPOST(app, base+peerRESTMethodBackgroundHealStatus, internalRaw(server.BackgroundHealStatusHandler), nil)
-	registerInternalPOST(app, base+peerRESTMethodLog, internalRaw(server.ConsoleLogHandler), nil)
+	registerInternalPOST(app, base+peerRESTMethodLog, internalRawStream(server.ConsoleLogHandler), nil)
 	registerInternalPOST(app, base+peerRESTMethodGetLocalDiskIDs, internalHdr(server.GetLocalDiskIDs), nil)
 	registerInternalPOST(app, base+peerRESTMethodGetBandwidth, internalHdr(server.GetBandwidth), nil)
 	registerInternalPOST(app, base+peerRESTMethodGetMetacacheListing, internalHdr(server.GetMetacacheListingHandler), nil)

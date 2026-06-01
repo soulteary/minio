@@ -1170,3 +1170,66 @@ func TestPolicyValidate(t *testing.T) {
 		}
 	}
 }
+
+// TestSessionPolicyDenyOnlyEscalation captures the core property behind the
+// GHSA-jjjj-jwhf-8rgr fix: an inline session (sub) policy must be evaluated
+// with DenyOnly=false so it only authorizes actions it positively grants.
+//
+// The escalation worked as follows: own-account admin operations (such as a
+// credential creating a service account for itself) are evaluated with
+// DenyOnly=true so a regular user can manage their own account without holding
+// an explicit admin allow. If that DenyOnly relaxation also leaks into the
+// session policy check, a credential scoped down to (say) a single read-only
+// S3 action would still "pass" any admin action it does not explicitly deny -
+// letting it mint a brand new, less-restricted service account and escalate to
+// the parent user's full privileges. Forcing DenyOnly=false on the sub policy
+// closes this hole.
+func TestSessionPolicyDenyOnlyEscalation(t *testing.T) {
+	// Restrictive inline session policy: only a single S3 read action, and no
+	// admin actions of any kind.
+	sessionPolicy := Policy{
+		Version: DefaultVersion,
+		Statements: []Statement{
+			NewStatement(
+				policy.Allow,
+				NewActionSet(GetObjectAction),
+				NewResourceSet(NewResource("restricted-bucket", "/*")),
+				condition.NewFunctions(),
+			),
+		},
+	}
+
+	createSvcAcctArgs := Args{
+		AccountName:     "svcacct",
+		Action:          CreateServiceAccountAdminAction,
+		ConditionValues: map[string][]string{},
+	}
+
+	// Sanity: with DenyOnly the session policy lets through any action it does
+	// not explicitly deny - this is exactly the unsafe behaviour the fix avoids
+	// for sub policies.
+	denyOnlyArgs := createSvcAcctArgs
+	denyOnlyArgs.DenyOnly = true
+	if !sessionPolicy.IsAllowed(denyOnlyArgs) {
+		t.Fatal("precondition failed: DenyOnly evaluation should pass an action that is not explicitly denied")
+	}
+
+	// The fix: evaluated as a positive allow check, the restrictive session
+	// policy must NOT authorize an admin action it never granted.
+	if sessionPolicy.IsAllowed(createSvcAcctArgs) {
+		t.Fatal("session policy must not allow CreateServiceAccount when DenyOnly is false (privilege escalation)")
+	}
+
+	// An action the session policy does grant must still be allowed, so the
+	// fix does not over-restrict legitimately granted actions.
+	grantedArgs := Args{
+		AccountName:     "svcacct",
+		Action:          GetObjectAction,
+		BucketName:      "restricted-bucket",
+		ObjectName:      "obj",
+		ConditionValues: map[string][]string{},
+	}
+	if !sessionPolicy.IsAllowed(grantedArgs) {
+		t.Fatal("session policy should still allow the action it positively grants")
+	}
+}

@@ -1970,7 +1970,19 @@ func (sys *IAMSys) IsAllowedServiceAccount(args iampolicy.Args, parent string) b
 		return false
 	}
 
-	return combinedPolicy.IsAllowed(parentArgs) && subPolicy.IsAllowed(parentArgs)
+	// SECURITY (GHSA-jjjj-jwhf-8rgr): the inline session (sub) policy must
+	// positively ALLOW the action. The parent-level check may run with
+	// DenyOnly set (own-account operations are allowed unless explicitly
+	// denied), but that relaxation must never extend to the session policy:
+	// otherwise a credential scoped down by a narrow session policy could
+	// perform own-account actions - e.g. minting a new, less-restricted
+	// service account - it was never granted, escalating to the parent's full
+	// privileges. Force a positive allow check on the sub policy.
+	subPolicyArgs := parentArgs
+	subPolicyArgs.IsOwner = false
+	subPolicyArgs.DenyOnly = false
+
+	return combinedPolicy.IsAllowed(parentArgs) && subPolicy.IsAllowed(subPolicyArgs)
 }
 
 // IsAllowedLDAPSTS - checks for LDAP specific claims and values
@@ -2107,8 +2119,20 @@ func (sys *IAMSys) IsAllowedSTS(args iampolicy.Args, parentUser string) bool {
 			return false
 		}
 
+		// SECURITY (GHSA-jjjj-jwhf-8rgr): the inline session (sub) policy must
+		// positively ALLOW the action. The inherited-policy check may run with
+		// DenyOnly set (own-account operations are allowed unless explicitly
+		// denied), but that relaxation must never extend to the session policy,
+		// otherwise an STS credential scoped down by a narrow session policy
+		// could perform own-account actions (e.g. minting a new, less-restricted
+		// service account) it was never granted, escalating to the parent's
+		// full privileges. Force a positive allow check on the sub policy.
+		subPolicyArgs := args
+		subPolicyArgs.IsOwner = false
+		subPolicyArgs.DenyOnly = false
+
 		// Sub policy is set and valid.
-		return combinedPolicy.IsAllowed(args) && subPolicy.IsAllowed(args)
+		return combinedPolicy.IsAllowed(args) && subPolicy.IsAllowed(subPolicyArgs)
 	}
 
 	// Sub policy not set, this is most common since subPolicy

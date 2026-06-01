@@ -589,3 +589,52 @@ func TestStorageRESTClientRenameFile(t *testing.T) {
 
 	testStorageAPIRenameFile(t, restClient)
 }
+
+// TestStorageRESTClientReadFileStream exercises ReadFileStreamHandler, which is
+// bridged through the streaming path (io.Copy + Content-Length). It validates
+// that a full and a partial (offset/length) read round-trip correctly through
+// the streamed response over the real REST client.
+func TestStorageRESTClientReadFileStream(t *testing.T) {
+	httpServer, restClient, prevGlobalServerConfig, endpointPath := newStorageRESTHTTPServerClient(t)
+	defer httpServer.Close()
+	defer func() {
+		globalServerConfig = prevGlobalServerConfig
+	}()
+	defer os.RemoveAll(endpointPath)
+
+	if err := restClient.MakeVol(context.Background(), "foo"); err != nil {
+		t.Fatalf("MakeVol failed: %v", err)
+	}
+	payload := "the quick brown fox jumps over the lazy dog"
+	if err := restClient.AppendFile(context.Background(), "foo", "myobject", []byte(payload)); err != nil {
+		t.Fatalf("AppendFile failed: %v", err)
+	}
+
+	// Full read of the streamed body.
+	rc, err := restClient.ReadFileStream(context.Background(), "foo", "myobject", 0, int64(len(payload)))
+	if err != nil {
+		t.Fatalf("ReadFileStream failed: %v", err)
+	}
+	got, err := ioutil.ReadAll(rc)
+	rc.Close()
+	if err != nil {
+		t.Fatalf("reading streamed body failed: %v", err)
+	}
+	if string(got) != payload {
+		t.Fatalf("full read mismatch: got %q want %q", got, payload)
+	}
+
+	// Partial read (offset/length) of the streamed body.
+	rc, err = restClient.ReadFileStream(context.Background(), "foo", "myobject", 4, 5)
+	if err != nil {
+		t.Fatalf("ReadFileStream (offset) failed: %v", err)
+	}
+	got, err = ioutil.ReadAll(rc)
+	rc.Close()
+	if err != nil {
+		t.Fatalf("reading partial streamed body failed: %v", err)
+	}
+	if string(got) != "quick" {
+		t.Fatalf("partial read mismatch: got %q want %q", got, "quick")
+	}
+}
