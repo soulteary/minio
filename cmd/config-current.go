@@ -136,11 +136,6 @@ func initHelp() {
 			MultipleTargets: true,
 		},
 		config.HelpKV{
-			Key:             config.NotifyNATSSubSys,
-			Description:     "publish bucket notifications to NATS endpoints",
-			MultipleTargets: true,
-		},
-		config.HelpKV{
 			Key:             config.NotifyMySQLSubSys,
 			Description:     "publish bucket notifications to MySQL databases",
 			MultipleTargets: true,
@@ -188,7 +183,6 @@ func initHelp() {
 		config.KmsKesSubSys:         crypto.HelpKes,
 		config.LoggerWebhookSubSys:  logger.Help,
 		config.AuditWebhookSubSys:   logger.HelpAudit,
-		config.NotifyNATSSubSys:     notify.HelpNATS,
 		config.NotifyMySQLSubSys:    notify.HelpMySQL,
 		config.NotifyPostgresSubSys: notify.HelpPostgres,
 		config.NotifyRedisSubSys:    notify.HelpRedis,

@@ -541,15 +541,9 @@ func migrateV7ToV8() error {
 	srvConfig.Logger.Console = cv7.Logger.Console
 	srvConfig.Logger.File = cv7.Logger.File
 	srvConfig.Logger.Syslog = cv7.Logger.Syslog
-	srvConfig.Notify.NATS = make(map[string]natsNotifyV1)
 	srvConfig.Notify.ElasticSearch = make(map[string]target.ElasticsearchArgs)
 	srvConfig.Notify.Redis = make(map[string]target.RedisArgs)
 	srvConfig.Notify.PostgreSQL = make(map[string]target.PostgreSQLArgs)
-	if len(cv7.Notify.NATS) == 0 {
-		srvConfig.Notify.NATS["1"] = natsNotifyV1{}
-	} else {
-		srvConfig.Notify.NATS = cv7.Notify.NATS
-	}
 	if len(cv7.Notify.ElasticSearch) == 0 {
 		srvConfig.Notify.ElasticSearch["1"] = target.ElasticsearchArgs{}
 	} else {
@@ -600,12 +594,6 @@ func migrateV8ToV9() error {
 	srvConfig.Logger.Syslog = cv8.Logger.Syslog
 
 	// check and set notifiers config
-	if len(cv8.Notify.NATS) == 0 {
-		srvConfig.Notify.NATS = make(map[string]natsNotifyV1)
-		srvConfig.Notify.NATS["1"] = natsNotifyV1{}
-	} else {
-		srvConfig.Notify.NATS = cv8.Notify.NATS
-	}
 	if len(cv8.Notify.ElasticSearch) == 0 {
 		srvConfig.Notify.ElasticSearch = make(map[string]target.ElasticsearchArgs)
 		srvConfig.Notify.ElasticSearch["1"] = target.ElasticsearchArgs{}
@@ -662,12 +650,6 @@ func migrateV9ToV10() error {
 	srvConfig.Logger.File = cv9.Logger.File
 
 	// check and set notifiers config
-	if len(cv9.Notify.NATS) == 0 {
-		srvConfig.Notify.NATS = make(map[string]natsNotifyV1)
-		srvConfig.Notify.NATS["1"] = natsNotifyV1{}
-	} else {
-		srvConfig.Notify.NATS = cv9.Notify.NATS
-	}
 	if len(cv9.Notify.ElasticSearch) == 0 {
 		srvConfig.Notify.ElasticSearch = make(map[string]target.ElasticsearchArgs)
 		srvConfig.Notify.ElasticSearch["1"] = target.ElasticsearchArgs{}
@@ -723,12 +705,6 @@ func migrateV10ToV11() error {
 	srvConfig.Logger.File = cv10.Logger.File
 
 	// check and set notifiers config
-	if len(cv10.Notify.NATS) == 0 {
-		srvConfig.Notify.NATS = make(map[string]natsNotifyV1)
-		srvConfig.Notify.NATS["1"] = natsNotifyV1{}
-	} else {
-		srvConfig.Notify.NATS = cv10.Notify.NATS
-	}
 	if len(cv10.Notify.ElasticSearch) == 0 {
 		srvConfig.Notify.ElasticSearch = make(map[string]target.ElasticsearchArgs)
 		srvConfig.Notify.ElasticSearch["1"] = target.ElasticsearchArgs{}
@@ -755,8 +731,7 @@ func migrateV10ToV11() error {
 	return nil
 }
 
-// Version '11' to '12' migration. Add support for NATS streaming
-// notifications.
+// Version '11' to '12' migration.
 func migrateV11ToV12() error {
 	configFile := getConfigFile()
 
@@ -801,36 +776,6 @@ func migrateV11ToV12() error {
 		srvConfig.Notify.PostgreSQL["1"] = target.PostgreSQLArgs{}
 	} else {
 		srvConfig.Notify.PostgreSQL = cv11.Notify.PostgreSQL
-	}
-
-	// V12 will have an updated config of nats. So we create a new one or we
-	// update the old one if found.
-	if len(cv11.Notify.NATS) == 0 {
-		srvConfig.Notify.NATS = make(map[string]target.NATSArgs)
-		srvConfig.Notify.NATS["1"] = target.NATSArgs{}
-	} else {
-		srvConfig.Notify.NATS = make(map[string]target.NATSArgs)
-		for k, v := range cv11.Notify.NATS {
-			if v.Address == "" {
-				continue
-			}
-
-			var addr *xnet.Host
-			addr, err = xnet.ParseHost(v.Address)
-			if err != nil {
-				return err
-			}
-			n := target.NATSArgs{}
-			n.Enable = v.Enable
-			n.Address = *addr
-			n.Subject = v.Subject
-			n.Username = v.Username
-			n.Password = v.Password
-			n.Token = v.Token
-			n.Secure = v.Secure
-			n.PingInterval = v.PingInterval
-			srvConfig.Notify.NATS[k] = n
-		}
 	}
 
 	if err = Save(configFile, srvConfig); err != nil {
@@ -889,12 +834,6 @@ func migrateV12ToV13() error {
 		srvConfig.Notify.PostgreSQL["1"] = target.PostgreSQLArgs{}
 	} else {
 		srvConfig.Notify.PostgreSQL = cv12.Notify.PostgreSQL
-	}
-	if len(cv12.Notify.NATS) == 0 {
-		srvConfig.Notify.NATS = make(map[string]target.NATSArgs)
-		srvConfig.Notify.NATS["1"] = target.NATSArgs{}
-	} else {
-		srvConfig.Notify.NATS = cv12.Notify.NATS
 	}
 
 	// V12 will not have a webhook config. So we initialize one here.
@@ -957,12 +896,6 @@ func migrateV13ToV14() error {
 		srvConfig.Notify.PostgreSQL["1"] = target.PostgreSQLArgs{}
 	} else {
 		srvConfig.Notify.PostgreSQL = cv13.Notify.PostgreSQL
-	}
-	if len(cv13.Notify.NATS) == 0 {
-		srvConfig.Notify.NATS = make(map[string]target.NATSArgs)
-		srvConfig.Notify.NATS["1"] = target.NATSArgs{}
-	} else {
-		srvConfig.Notify.NATS = cv13.Notify.NATS
 	}
 	if len(cv13.Notify.Webhook) == 0 {
 		srvConfig.Notify.Webhook = make(map[string]target.WebhookArgs)
@@ -1030,12 +963,6 @@ func migrateV14ToV15() error {
 		srvConfig.Notify.PostgreSQL["1"] = target.PostgreSQLArgs{}
 	} else {
 		srvConfig.Notify.PostgreSQL = cv14.Notify.PostgreSQL
-	}
-	if len(cv14.Notify.NATS) == 0 {
-		srvConfig.Notify.NATS = make(map[string]target.NATSArgs)
-		srvConfig.Notify.NATS["1"] = target.NATSArgs{}
-	} else {
-		srvConfig.Notify.NATS = cv14.Notify.NATS
 	}
 	if len(cv14.Notify.Webhook) == 0 {
 		srvConfig.Notify.Webhook = make(map[string]target.WebhookArgs)
@@ -1106,12 +1033,6 @@ func migrateV15ToV16() error {
 		srvConfig.Notify.PostgreSQL["1"] = target.PostgreSQLArgs{}
 	} else {
 		srvConfig.Notify.PostgreSQL = cv15.Notify.PostgreSQL
-	}
-	if len(cv15.Notify.NATS) == 0 {
-		srvConfig.Notify.NATS = make(map[string]target.NATSArgs)
-		srvConfig.Notify.NATS["1"] = target.NATSArgs{}
-	} else {
-		srvConfig.Notify.NATS = cv15.Notify.NATS
 	}
 	if len(cv15.Notify.Webhook) == 0 {
 		srvConfig.Notify.Webhook = make(map[string]target.WebhookArgs)
@@ -1209,12 +1130,6 @@ func migrateV16ToV17() error {
 			srvConfig.Notify.PostgreSQL[k] = v
 		}
 	}
-	if len(cv16.Notify.NATS) == 0 {
-		srvConfig.Notify.NATS = make(map[string]target.NATSArgs)
-		srvConfig.Notify.NATS["1"] = target.NATSArgs{}
-	} else {
-		srvConfig.Notify.NATS = cv16.Notify.NATS
-	}
 	if len(cv16.Notify.Webhook) == 0 {
 		srvConfig.Notify.Webhook = make(map[string]target.WebhookArgs)
 		srvConfig.Notify.Webhook["1"] = target.WebhookArgs{}
@@ -1302,12 +1217,6 @@ func migrateV17ToV18() error {
 	} else {
 		srvConfig.Notify.PostgreSQL = cv17.Notify.PostgreSQL
 	}
-	if len(cv17.Notify.NATS) == 0 {
-		srvConfig.Notify.NATS = make(map[string]target.NATSArgs)
-		srvConfig.Notify.NATS["1"] = target.NATSArgs{}
-	} else {
-		srvConfig.Notify.NATS = cv17.Notify.NATS
-	}
 	if len(cv17.Notify.Webhook) == 0 {
 		srvConfig.Notify.Webhook = make(map[string]target.WebhookArgs)
 		srvConfig.Notify.Webhook["1"] = target.WebhookArgs{}
@@ -1389,12 +1298,6 @@ func migrateV18ToV19() error {
 	} else {
 		srvConfig.Notify.PostgreSQL = cv18.Notify.PostgreSQL
 	}
-	if len(cv18.Notify.NATS) == 0 {
-		srvConfig.Notify.NATS = make(map[string]target.NATSArgs)
-		srvConfig.Notify.NATS["1"] = target.NATSArgs{}
-	} else {
-		srvConfig.Notify.NATS = cv18.Notify.NATS
-	}
 	if len(cv18.Notify.Webhook) == 0 {
 		srvConfig.Notify.Webhook = make(map[string]target.WebhookArgs)
 		srvConfig.Notify.Webhook["1"] = target.WebhookArgs{}
@@ -1475,12 +1378,6 @@ func migrateV19ToV20() error {
 	} else {
 		srvConfig.Notify.PostgreSQL = cv19.Notify.PostgreSQL
 	}
-	if len(cv19.Notify.NATS) == 0 {
-		srvConfig.Notify.NATS = make(map[string]target.NATSArgs)
-		srvConfig.Notify.NATS["1"] = target.NATSArgs{}
-	} else {
-		srvConfig.Notify.NATS = cv19.Notify.NATS
-	}
 	if len(cv19.Notify.Webhook) == 0 {
 		srvConfig.Notify.Webhook = make(map[string]target.WebhookArgs)
 		srvConfig.Notify.Webhook["1"] = target.WebhookArgs{}
@@ -1556,12 +1453,6 @@ func migrateV20ToV21() error {
 		}
 	} else {
 		srvConfig.Notify.PostgreSQL = cv20.Notify.PostgreSQL
-	}
-	if len(cv20.Notify.NATS) == 0 {
-		srvConfig.Notify.NATS = make(map[string]target.NATSArgs)
-		srvConfig.Notify.NATS["1"] = target.NATSArgs{}
-	} else {
-		srvConfig.Notify.NATS = cv20.Notify.NATS
 	}
 	if len(cv20.Notify.Webhook) == 0 {
 		srvConfig.Notify.Webhook = make(map[string]target.WebhookArgs)
@@ -1642,12 +1533,6 @@ func migrateV21ToV22() error {
 	} else {
 		srvConfig.Notify.PostgreSQL = cv21.Notify.PostgreSQL
 	}
-	if len(cv21.Notify.NATS) == 0 {
-		srvConfig.Notify.NATS = make(map[string]target.NATSArgs)
-		srvConfig.Notify.NATS["1"] = target.NATSArgs{}
-	} else {
-		srvConfig.Notify.NATS = cv21.Notify.NATS
-	}
 	if len(cv21.Notify.Webhook) == 0 {
 		srvConfig.Notify.Webhook = make(map[string]target.WebhookArgs)
 		srvConfig.Notify.Webhook["1"] = target.WebhookArgs{}
@@ -1726,12 +1611,6 @@ func migrateV22ToV23() error {
 		}
 	} else {
 		srvConfig.Notify.PostgreSQL = cv22.Notify.PostgreSQL
-	}
-	if len(cv22.Notify.NATS) == 0 {
-		srvConfig.Notify.NATS = make(map[string]target.NATSArgs)
-		srvConfig.Notify.NATS["1"] = target.NATSArgs{}
-	} else {
-		srvConfig.Notify.NATS = cv22.Notify.NATS
 	}
 	if len(cv22.Notify.Webhook) == 0 {
 		srvConfig.Notify.Webhook = make(map[string]target.WebhookArgs)
@@ -1821,12 +1700,6 @@ func migrateV23ToV24() error {
 	} else {
 		srvConfig.Notify.PostgreSQL = cv23.Notify.PostgreSQL
 	}
-	if len(cv23.Notify.NATS) == 0 {
-		srvConfig.Notify.NATS = make(map[string]target.NATSArgs)
-		srvConfig.Notify.NATS["1"] = target.NATSArgs{}
-	} else {
-		srvConfig.Notify.NATS = cv23.Notify.NATS
-	}
 	if len(cv23.Notify.Webhook) == 0 {
 		srvConfig.Notify.Webhook = make(map[string]target.WebhookArgs)
 		srvConfig.Notify.Webhook["1"] = target.WebhookArgs{}
@@ -1914,12 +1787,6 @@ func migrateV24ToV25() error {
 		}
 	} else {
 		srvConfig.Notify.PostgreSQL = cv24.Notify.PostgreSQL
-	}
-	if len(cv24.Notify.NATS) == 0 {
-		srvConfig.Notify.NATS = make(map[string]target.NATSArgs)
-		srvConfig.Notify.NATS["1"] = target.NATSArgs{}
-	} else {
-		srvConfig.Notify.NATS = cv24.Notify.NATS
 	}
 	if len(cv24.Notify.Webhook) == 0 {
 		srvConfig.Notify.Webhook = make(map[string]target.WebhookArgs)
@@ -2013,12 +1880,6 @@ func migrateV25ToV26() error {
 		}
 	} else {
 		srvConfig.Notify.PostgreSQL = cv25.Notify.PostgreSQL
-	}
-	if len(cv25.Notify.NATS) == 0 {
-		srvConfig.Notify.NATS = make(map[string]target.NATSArgs)
-		srvConfig.Notify.NATS["1"] = target.NATSArgs{}
-	} else {
-		srvConfig.Notify.NATS = cv25.Notify.NATS
 	}
 	if len(cv25.Notify.Webhook) == 0 {
 		srvConfig.Notify.Webhook = make(map[string]target.WebhookArgs)
@@ -2453,9 +2314,6 @@ func migrateMinioSysConfigToKV(objAPI ObjectLayer) error {
 	}
 	for k, args := range cfg.Notify.MySQL {
 		notify.SetNotifyMySQL(newCfg, k, args)
-	}
-	for k, args := range cfg.Notify.NATS {
-		notify.SetNotifyNATS(newCfg, k, args)
 	}
 	for k, args := range cfg.Notify.PostgreSQL {
 		notify.SetNotifyPostgres(newCfg, k, args)

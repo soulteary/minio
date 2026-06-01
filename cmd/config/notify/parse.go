@@ -18,7 +18,6 @@ package notify
 
 import (
 	"context"
-	"crypto/x509"
 	"errors"
 	"net/http"
 	"strconv"
@@ -120,11 +119,6 @@ func FetchRegisteredTargets(ctx context.Context, cfg config.Config, transport *h
 		return nil, err
 	}
 
-	natsTargets, err := GetNotifyNATS(cfg[config.NotifyNATSSubSys], transport.TLSClientConfig.RootCAs)
-	if err != nil {
-		return nil, err
-	}
-
 	postgresTargets, err := GetNotifyPostgres(cfg[config.NotifyPostgresSubSys])
 	if err != nil {
 		return nil, err
@@ -165,26 +159,6 @@ func FetchRegisteredTargets(ctx context.Context, cfg config.Config, transport *h
 			continue
 		}
 		newTarget, err := target.NewMySQLTarget(id, args, ctx.Done(), logger.LogOnceIf, test)
-		if err != nil {
-			targetsOffline = true
-			if returnOnTargetError {
-				return nil, err
-			}
-			_ = newTarget.Close()
-		}
-		if err = targetList.Add(newTarget); err != nil {
-			logger.LogIf(context.Background(), err)
-			if returnOnTargetError {
-				return nil, err
-			}
-		}
-	}
-
-	for id, args := range natsTargets {
-		if !args.Enable {
-			continue
-		}
-		newTarget, err := target.NewNATSTarget(id, args, ctx.Done(), logger.LogOnceIf, test)
 		if err != nil {
 			targetsOffline = true
 			if returnOnTargetError {
@@ -271,7 +245,6 @@ func FetchRegisteredTargets(ctx context.Context, cfg config.Config, transport *h
 var (
 	DefaultNotificationKVS = map[string]config.KVS{
 		config.NotifyMySQLSubSys:    DefaultMySQLKVS,
-		config.NotifyNATSSubSys:     DefaultNATSKVS,
 		config.NotifyPostgresSubSys: DefaultPostgresKVS,
 		config.NotifyRedisSubSys:    DefaultRedisKVS,
 		config.NotifyWebhookSubSys:  DefaultWebhookKVS,
@@ -420,238 +393,6 @@ func GetNotifyMySQL(mysqlKVS map[string]config.KVS) (map[string]target.MySQLArgs
 		mysqlTargets[k] = mysqlArgs
 	}
 	return mysqlTargets, nil
-}
-
-// DefaultNATSKVS - NATS KV for nats config.
-var (
-	DefaultNATSKVS = config.KVS{
-		config.KV{
-			Key:   config.Enable,
-			Value: config.EnableOff,
-		},
-		config.KV{
-			Key:   target.NATSAddress,
-			Value: "",
-		},
-		config.KV{
-			Key:   target.NATSSubject,
-			Value: "",
-		},
-		config.KV{
-			Key:   target.NATSUsername,
-			Value: "",
-		},
-		config.KV{
-			Key:   target.NATSPassword,
-			Value: "",
-		},
-		config.KV{
-			Key:   target.NATSToken,
-			Value: "",
-		},
-		config.KV{
-			Key:   target.NATSTLS,
-			Value: config.EnableOff,
-		},
-		config.KV{
-			Key:   target.NATSTLSSkipVerify,
-			Value: config.EnableOff,
-		},
-		config.KV{
-			Key:   target.NATSCertAuthority,
-			Value: "",
-		},
-		config.KV{
-			Key:   target.NATSClientCert,
-			Value: "",
-		},
-		config.KV{
-			Key:   target.NATSClientKey,
-			Value: "",
-		},
-		config.KV{
-			Key:   target.NATSPingInterval,
-			Value: "0",
-		},
-		config.KV{
-			Key:   target.NATSStreaming,
-			Value: config.EnableOff,
-		},
-		config.KV{
-			Key:   target.NATSStreamingAsync,
-			Value: config.EnableOff,
-		},
-		config.KV{
-			Key:   target.NATSStreamingMaxPubAcksInFlight,
-			Value: "0",
-		},
-		config.KV{
-			Key:   target.NATSStreamingClusterID,
-			Value: "",
-		},
-		config.KV{
-			Key:   target.NATSQueueDir,
-			Value: "",
-		},
-		config.KV{
-			Key:   target.NATSQueueLimit,
-			Value: "0",
-		},
-	}
-)
-
-// GetNotifyNATS - returns a map of registered notification 'nats' targets
-func GetNotifyNATS(natsKVS map[string]config.KVS, rootCAs *x509.CertPool) (map[string]target.NATSArgs, error) {
-	natsTargets := make(map[string]target.NATSArgs)
-	for k, kv := range mergeTargets(natsKVS, target.EnvNATSEnable, DefaultNATSKVS) {
-		enableEnv := target.EnvNATSEnable
-		if k != config.Default {
-			enableEnv = enableEnv + config.Default + k
-		}
-
-		enabled, err := config.ParseBool(env.Get(enableEnv, kv.Get(config.Enable)))
-		if err != nil {
-			return nil, err
-		}
-		if !enabled {
-			continue
-		}
-
-		addressEnv := target.EnvNATSAddress
-		if k != config.Default {
-			addressEnv = addressEnv + config.Default + k
-		}
-
-		address, err := xnet.ParseHost(env.Get(addressEnv, kv.Get(target.NATSAddress)))
-		if err != nil {
-			return nil, err
-		}
-
-		pingIntervalEnv := target.EnvNATSPingInterval
-		if k != config.Default {
-			pingIntervalEnv = pingIntervalEnv + config.Default + k
-		}
-
-		pingInterval, err := strconv.ParseInt(env.Get(pingIntervalEnv, kv.Get(target.NATSPingInterval)), 10, 64)
-		if err != nil {
-			return nil, err
-		}
-
-		queueLimitEnv := target.EnvNATSQueueLimit
-		if k != config.Default {
-			queueLimitEnv = queueLimitEnv + config.Default + k
-		}
-
-		queueLimit, err := strconv.ParseUint(env.Get(queueLimitEnv, kv.Get(target.NATSQueueLimit)), 10, 64)
-		if err != nil {
-			return nil, err
-		}
-
-		tlsEnv := target.EnvNATSTLS
-		if k != config.Default {
-			tlsEnv = tlsEnv + config.Default + k
-		}
-
-		tlsSkipVerifyEnv := target.EnvNATSTLSSkipVerify
-		if k != config.Default {
-			tlsSkipVerifyEnv = tlsSkipVerifyEnv + config.Default + k
-		}
-
-		subjectEnv := target.EnvNATSSubject
-		if k != config.Default {
-			subjectEnv = subjectEnv + config.Default + k
-		}
-
-		usernameEnv := target.EnvNATSUsername
-		if k != config.Default {
-			usernameEnv = usernameEnv + config.Default + k
-		}
-
-		passwordEnv := target.EnvNATSPassword
-		if k != config.Default {
-			passwordEnv = passwordEnv + config.Default + k
-		}
-
-		tokenEnv := target.EnvNATSToken
-		if k != config.Default {
-			tokenEnv = tokenEnv + config.Default + k
-		}
-
-		queueDirEnv := target.EnvNATSQueueDir
-		if k != config.Default {
-			queueDirEnv = queueDirEnv + config.Default + k
-		}
-
-		certAuthorityEnv := target.EnvNATSCertAuthority
-		if k != config.Default {
-			certAuthorityEnv = certAuthorityEnv + config.Default + k
-		}
-
-		clientCertEnv := target.EnvNATSClientCert
-		if k != config.Default {
-			clientCertEnv = clientCertEnv + config.Default + k
-		}
-
-		clientKeyEnv := target.EnvNATSClientKey
-		if k != config.Default {
-			clientKeyEnv = clientKeyEnv + config.Default + k
-		}
-
-		natsArgs := target.NATSArgs{
-			Enable:        true,
-			Address:       *address,
-			Subject:       env.Get(subjectEnv, kv.Get(target.NATSSubject)),
-			Username:      env.Get(usernameEnv, kv.Get(target.NATSUsername)),
-			Password:      env.Get(passwordEnv, kv.Get(target.NATSPassword)),
-			CertAuthority: env.Get(certAuthorityEnv, kv.Get(target.NATSCertAuthority)),
-			ClientCert:    env.Get(clientCertEnv, kv.Get(target.NATSClientCert)),
-			ClientKey:     env.Get(clientKeyEnv, kv.Get(target.NATSClientKey)),
-			Token:         env.Get(tokenEnv, kv.Get(target.NATSToken)),
-			TLS:           env.Get(tlsEnv, kv.Get(target.NATSTLS)) == config.EnableOn,
-			TLSSkipVerify: env.Get(tlsSkipVerifyEnv, kv.Get(target.NATSTLSSkipVerify)) == config.EnableOn,
-			PingInterval:  pingInterval,
-			QueueDir:      env.Get(queueDirEnv, kv.Get(target.NATSQueueDir)),
-			QueueLimit:    queueLimit,
-			RootCAs:       rootCAs,
-		}
-
-		streamingEnableEnv := target.EnvNATSStreaming
-		if k != config.Default {
-			streamingEnableEnv = streamingEnableEnv + config.Default + k
-		}
-
-		streamingEnabled := env.Get(streamingEnableEnv, kv.Get(target.NATSStreaming)) == config.EnableOn
-		if streamingEnabled {
-			asyncEnv := target.EnvNATSStreamingAsync
-			if k != config.Default {
-				asyncEnv = asyncEnv + config.Default + k
-			}
-			maxPubAcksInflightEnv := target.EnvNATSStreamingMaxPubAcksInFlight
-			if k != config.Default {
-				maxPubAcksInflightEnv = maxPubAcksInflightEnv + config.Default + k
-			}
-			maxPubAcksInflight, err := strconv.Atoi(env.Get(maxPubAcksInflightEnv,
-				kv.Get(target.NATSStreamingMaxPubAcksInFlight)))
-			if err != nil {
-				return nil, err
-			}
-			clusterIDEnv := target.EnvNATSStreamingClusterID
-			if k != config.Default {
-				clusterIDEnv = clusterIDEnv + config.Default + k
-			}
-			natsArgs.Streaming.Enable = streamingEnabled
-			natsArgs.Streaming.ClusterID = env.Get(clusterIDEnv, kv.Get(target.NATSStreamingClusterID))
-			natsArgs.Streaming.Async = env.Get(asyncEnv, kv.Get(target.NATSStreamingAsync)) == config.EnableOn
-			natsArgs.Streaming.MaxPubAcksInflight = maxPubAcksInflight
-		}
-
-		if err = natsArgs.Validate(); err != nil {
-			return nil, err
-		}
-
-		natsTargets[k] = natsArgs
-	}
-	return natsTargets, nil
 }
 
 // DefaultPostgresKVS - default Postgres KV for server config.

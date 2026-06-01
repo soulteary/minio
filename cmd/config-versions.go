@@ -221,19 +221,15 @@ type configV6 struct {
 	Notify notifierV1 `json:"notify"`
 }
 
-// Notifier represents collection of supported notification queues in version
-// 1 without NATS streaming.
+// Notifier represents collection of supported notification queues in version 1.
 type notifierV1 struct {
-	NATS          map[string]natsNotifyV1             `json:"nats"`
 	ElasticSearch map[string]target.ElasticsearchArgs `json:"elasticsearch"`
 	Redis         map[string]target.RedisArgs         `json:"redis"`
 	PostgreSQL    map[string]target.PostgreSQLArgs    `json:"postgresql"`
 }
 
-// Notifier represents collection of supported notification queues in version 2
-// with NATS streaming but without webhook.
+// Notifier represents collection of supported notification queues in version 2.
 type notifierV2 struct {
-	NATS          map[string]target.NATSArgs          `json:"nats"`
 	ElasticSearch map[string]target.ElasticsearchArgs `json:"elasticsearch"`
 	Redis         map[string]target.RedisArgs         `json:"redis"`
 	PostgreSQL    map[string]target.PostgreSQLArgs    `json:"postgresql"`
@@ -254,8 +250,7 @@ type serverConfigV7 struct {
 	Notify notifierV1 `json:"notify"`
 }
 
-// serverConfigV8 server configuration version '8'. Adds NATS notify.Config
-// configuration.
+// serverConfigV8 server configuration version '8'.
 type serverConfigV8 struct {
 	Version string `json:"version"`
 
@@ -309,18 +304,6 @@ type serverConfigV10 struct {
 	Notify notifierV1 `json:"notify"`
 }
 
-// natsNotifyV1 - structure was valid until config V 11
-type natsNotifyV1 struct {
-	Enable       bool   `json:"enable"`
-	Address      string `json:"address"`
-	Subject      string `json:"subject"`
-	Username     string `json:"username"`
-	Password     string `json:"password"`
-	Token        string `json:"token"`
-	Secure       bool   `json:"secure"`
-	PingInterval int64  `json:"pingInterval"`
-}
-
 // serverConfigV11 server configuration version '11' which is like
 // version '10'.
 type serverConfigV11 struct {
@@ -337,8 +320,7 @@ type serverConfigV11 struct {
 	Notify notifierV1 `json:"notify"`
 }
 
-// serverConfigV12 server configuration version '12' which is like
-// version '11' except it adds support for NATS streaming notifications.
+// serverConfigV12 server configuration version '12' which is like version '11'.
 type serverConfigV12 struct {
 	Version string `json:"version"`
 
@@ -356,7 +338,6 @@ type serverConfigV12 struct {
 type notifierV3 struct {
 	Elasticsearch map[string]target.ElasticsearchArgs `json:"elasticsearch"`
 	MySQL         map[string]target.MySQLArgs         `json:"mysql"`
-	NATS          map[string]target.NATSArgs          `json:"nats"`
 	PostgreSQL    map[string]target.PostgreSQLArgs    `json:"postgresql"`
 	Redis         map[string]target.RedisArgs         `json:"redis"`
 	Webhook       map[string]target.WebhookArgs       `json:"webhook"`
@@ -811,7 +792,7 @@ type serverConfigV32 struct {
 	} `json:"policy"`
 }
 
-// serverConfigV33 is just like version '32', removes clientID from NATS and MQTT, and adds queueDir, queueLimit in all notification targets.
+// serverConfigV33 is just like version '32', removes clientID from MQTT, and adds queueDir, queueLimit in all notification targets.
 type serverConfigV33 struct {
 	quick.Config `json:"-"` // ignore interfaces
 

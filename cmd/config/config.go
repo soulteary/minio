@@ -86,7 +86,6 @@ const (
 // Notification config constants.
 const (
 	NotifyMySQLSubSys    = "notify_mysql"
-	NotifyNATSSubSys     = "notify_nats"
 	NotifyESSubSys       = "notify_elasticsearch"
 	NotifyPostgresSubSys = "notify_postgres"
 	NotifyRedisSubSys    = "notify_redis"
@@ -115,7 +114,6 @@ var SubSystems = set.CreateStringSet(
 	HealSubSys,
 	NotifyESSubSys,
 	NotifyMySQLSubSys,
-	NotifyNATSSubSys,
 	NotifyPostgresSubSys,
 	NotifyRedisSubSys,
 	NotifyWebhookSubSys,

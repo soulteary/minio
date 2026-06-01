@@ -199,7 +199,6 @@ Notification targets supported by MinIO are in the following list. To configure 
 
 ```
 notify_webhook        publish bucket notifications to webhook endpoints
-notify_nats           publish bucket notifications to NATS endpoints
 notify_mysql          publish bucket notifications to MySQL databases
 notify_postgres       publish bucket notifications to Postgres databases
 notify_elasticsearch  publish bucket notifications to Elasticsearch endpoints
