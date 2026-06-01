@@ -224,6 +224,13 @@ func setHTTPStatsHandlerFiber(c fiber.Ctx) error {
 	if inputBytes < 0 {
 		inputBytes = 0
 	}
+	// Content-Length is -1 (clamped to 0 above) for chunked / aws-chunked
+	// streaming-signature uploads. By the time c.Next() returns the handler has
+	// consumed the request body, so prefer the actual number of bytes read,
+	// which accurately reflects incoming traffic for those uploads.
+	if read := requestInputBytesRead(c); read > inputBytes {
+		inputBytes = read
+	}
 	reserved := strings.HasPrefix(c.Path(), minioReservedBucketPath)
 	record := func(out int64) {
 		if out < 0 {

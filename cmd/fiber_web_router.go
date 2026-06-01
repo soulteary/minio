@@ -95,17 +95,22 @@ func registerWebRouterFiber(app *fiber.App) error {
 	}
 	webDownloadRules := []routeRule{
 		{
-			methods:      []string{http.MethodGet},
-			queries:      map[string]string{"token": ".*"},
-			handler:      toMinioHandler(web.Download),
+			methods: []string{http.MethodGet},
+			queries: map[string]string{"token": ".*"},
+			// Streams a single object (io.Copy) to the client; like GetObject it
+			// must use the streaming bridge so large downloads are not buffered
+			// entirely in memory by the buffered bridge.
+			handler:      toMinioStreamHandler(web.Download),
 			traceHeaders: true,
 		},
 	}
 	webZipRules := []routeRule{
 		{
-			methods:      []string{http.MethodPost},
-			queries:      map[string]string{"token": ".*"},
-			handler:      toMinioHandler(web.DownloadZip),
+			methods: []string{http.MethodPost},
+			queries: map[string]string{"token": ".*"},
+			// Streams a (potentially large) multi-object zip archive; must stream
+			// for the same reason as the single-object download above.
+			handler:      toMinioStreamHandler(web.DownloadZip),
 			traceHeaders: true,
 		},
 	}

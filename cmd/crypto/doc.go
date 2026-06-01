@@ -81,7 +81,9 @@
 // ### SSE-S3 and KMS
 //
 // SSE-S3 requires that the KMS provides two functions:
+//
 //  1. Generate(KeyID) -> (Key, EncKey)
+//
 //  2. Unseal(KeyID, EncKey) -> Key
 //
 //  1. Encrypt:

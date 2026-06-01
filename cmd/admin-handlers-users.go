@@ -597,12 +597,22 @@ func (a adminAPIHandlers) UpdateServiceAccount(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	svcAccount, _, err := globalIAMSys.GetServiceAccount(ctx, accessKey)
-	if err != nil {
+	// Existence check: GetServiceAccount returns an error (mapped to a 404) when
+	// the target access key does not exist.
+	if _, _, err := globalIAMSys.GetServiceAccount(ctx, accessKey); err != nil {
 		writeErrorResponseJSON(ctx, w, toAdminAPIErr(ctx, err), r.URL)
 		return
 	}
 
+	// SECURITY (GHSA-xx8w-mq23-29g4): only an account that explicitly holds the
+	// UpdateServiceAccountAdminAction permission may edit a service account /
+	// access key. The previous fallback also allowed an account to edit any
+	// service account sharing its parent user (i.e. edit "its own" keys), which
+	// is a privilege-escalation vector: a service account created with a
+	// restricted session policy could rewrite that policy back to its parent's
+	// full permissions and thereby escalate. Self-editing was removed upstream
+	// pending a redesign; users can still delete and re-create their keys.
+	// Matches upstream fix minio/minio#18928.
 	if !globalIAMSys.IsAllowed(iampolicy.Args{
 		AccountName:     cred.AccessKey,
 		Action:          iampolicy.UpdateServiceAccountAdminAction,
@@ -610,15 +620,8 @@ func (a adminAPIHandlers) UpdateServiceAccount(w http.ResponseWriter, r *http.Re
 		IsOwner:         owner,
 		Claims:          claims,
 	}) {
-		requestUser := cred.AccessKey
-		if cred.ParentUser != "" {
-			requestUser = cred.ParentUser
-		}
-
-		if requestUser != svcAccount.ParentUser {
-			writeErrorResponseJSON(ctx, w, errorCodes.ToAPIErr(ErrAccessDenied), r.URL)
-			return
-		}
+		writeErrorResponseJSON(ctx, w, errorCodes.ToAPIErr(ErrAccessDenied), r.URL)
+		return
 	}
 
 	password := cred.SecretKey

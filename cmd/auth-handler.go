@@ -25,6 +25,7 @@ import (
 	"errors"
 	"io"
 	"io/ioutil"
+	"mime"
 	"net/http"
 	"strconv"
 	"strings"
@@ -71,9 +72,20 @@ func isRequestPresignedSignatureV2(r *http.Request) bool {
 }
 
 // Verify if request has AWS Post policy Signature Version '4'.
+//
+// SECURITY (CVE-2023-28434): use a strict media-type comparison via
+// mime.ParseMediaType instead of a loose strings.Contains. A substring match
+// accepts content types such as "multipart/form-data-evil" or values where the
+// token appears anywhere, which can cause the post-policy auth classification
+// to disagree with the request router and allow bypassing reserved/meta bucket
+// protection. Both the router matcher and this predicate must accept exactly
+// the "multipart/form-data" media type. Matches upstream fix minio/minio#16849.
 func isRequestPostPolicySignatureV4(r *http.Request) bool {
-	return strings.Contains(r.Header.Get(xhttp.ContentType), "multipart/form-data") &&
-		r.Method == http.MethodPost
+	mediaType, _, err := mime.ParseMediaType(r.Header.Get(xhttp.ContentType))
+	if err != nil {
+		return false
+	}
+	return mediaType == "multipart/form-data" && r.Method == http.MethodPost
 }
 
 // Verify if the request has AWS Streaming Signature Version '4'. This is only valid for 'PUT' operation.

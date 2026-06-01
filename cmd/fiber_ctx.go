@@ -17,6 +17,7 @@
 package cmd
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"io"
@@ -26,6 +27,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 
 	"github.com/gofiber/fiber/v3"
 	xhttp "github.com/minio/minio/cmd/http"
@@ -148,6 +150,13 @@ func (w *fiberStreamResponseWriter) Write(b []byte) (int, error) {
 	return w.pw.Write(b)
 }
 
+// Flush is intentionally a no-op. Streamed responses are delivered through an
+// io.Pipe consumed by fasthttp's chunked body writer (writeBodyChunked), which
+// flushes the connection after every chunk (writeChunk -> w.Flush). Because the
+// pipe hands off each Write synchronously to that loop, by the time a handler's
+// Write returns the bytes have already been chunk-encoded and flushed to the
+// client. There is therefore no buffered data left to flush here, so this
+// faithfully provides net/http http.Flusher semantics for the streaming path.
 func (w *fiberStreamResponseWriter) Flush() {}
 
 // signalReady unblocks the dispatcher once status and headers are final.
@@ -424,11 +433,70 @@ func getHostNameFiber(c fiber.Ctx) (hostName string) {
 // "aws-chunked" streaming-signature uploads (the handler must see the original
 // chunked bytes to verify chunk signatures).
 func fiberRequestBody(c fiber.Ctx) io.ReadCloser {
+	var rc io.ReadCloser
 	if bs := c.Request().BodyStream(); bs != nil {
-		return io.NopCloser(bs)
+		rc = io.NopCloser(bs)
+	} else {
+		rc = io.NopCloser(bytes.NewReader(c.Request().Body()))
 	}
-	return io.NopCloser(bytes.NewReader(c.Request().Body()))
+	// Wrap with a counter so setHTTPStatsHandlerFiber can meter the actual
+	// number of bytes consumed. Content-Length is -1 for chunked / aws-chunked
+	// streaming-signature uploads, so a Content-Length-only estimate undercounts
+	// (treats them as 0). All body wrappers built for one request share a single
+	// counter (keyed on the fasthttp ctx); since they all wrap the same
+	// underlying body stream and only one is actually read (handler, proxy, or
+	// shared bridge), the shared counter reflects the true bytes read regardless
+	// of which wrapper performed the read.
+	return &countingReadCloser{rc: rc, counter: requestInputBodyCounter(c)}
 }
+
+// httpStatsInputKey is the fasthttp ctx user-value key under which the
+// per-request input-body byte counter is stored.
+type httpStatsInputKey struct{}
+
+// requestBodyCounter accumulates the number of request body bytes read.
+type requestBodyCounter struct{ n int64 }
+
+// requestInputBodyCounter returns the per-request body byte counter, creating
+// and caching it on the fasthttp ctx on first use.
+func requestInputBodyCounter(c fiber.Ctx) *requestBodyCounter {
+	if v := c.RequestCtx().UserValue(httpStatsInputKey{}); v != nil {
+		if rc, ok := v.(*requestBodyCounter); ok {
+			return rc
+		}
+	}
+	rc := &requestBodyCounter{}
+	c.RequestCtx().SetUserValue(httpStatsInputKey{}, rc)
+	return rc
+}
+
+// requestInputBytesRead returns the number of request body bytes read so far,
+// or 0 if no counter was installed (e.g. a handler that never built a request).
+func requestInputBytesRead(c fiber.Ctx) int64 {
+	if v := c.RequestCtx().UserValue(httpStatsInputKey{}); v != nil {
+		if rc, ok := v.(*requestBodyCounter); ok {
+			return atomic.LoadInt64(&rc.n)
+		}
+	}
+	return 0
+}
+
+// countingReadCloser counts bytes read through it into a shared counter without
+// buffering, preserving the streaming behavior of the request body.
+type countingReadCloser struct {
+	rc      io.ReadCloser
+	counter *requestBodyCounter
+}
+
+func (c *countingReadCloser) Read(p []byte) (int, error) {
+	n, err := c.rc.Read(p)
+	if n > 0 {
+		atomic.AddInt64(&c.counter.n, int64(n))
+	}
+	return n, err
+}
+
+func (c *countingReadCloser) Close() error { return c.rc.Close() }
 
 // fiberRequest converts a Fiber context to *http.Request for auth/policy
 // compatibility. Unlike adaptor.ConvertRequest it does not call PostBody(), so
@@ -472,6 +540,25 @@ func fiberRequest(c fiber.Ctx) (*http.Request, error) {
 
 	r.Body = fiberRequestBody(c)
 	r.ContentLength = int64(fctx.Request.Header.ContentLength())
+
+	// Bind the fasthttp request context so r.Context() is a real request-scoped
+	// context instead of a detached context.Background(). We use c.RequestCtx()
+	// (the *fasthttp.RequestCtx, which implements context.Context) rather than
+	// c.Context(): the latter is fiber's user context, which defaults to a
+	// non-cancellable context.Background() whose Done() is nil. c.RequestCtx()
+	// propagates request-scoped values and server-shutdown cancellation
+	// (fasthttp closes RequestCtx.Done() on Server.Shutdown), so long-lived
+	// handlers that loop on r.Context().Done() (admin trace/log, heal status,
+	// ListenNotification, streams) unblock on graceful shutdown instead of
+	// hanging, and the audit/ReqInfo chain layered on by newContext() is anchored
+	// to the request rather than to a process-global background context.
+	//
+	// Note: unlike net/http, fasthttp does not cancel RequestCtx.Done() on a
+	// per-request client disconnect (it only fires on server shutdown), so that
+	// specific net/http behavior is not fully reproduced here.
+	if reqCtx := c.RequestCtx(); reqCtx != nil {
+		r = r.WithContext(reqCtx)
+	}
 
 	// Request-scoped Content-Length override used by the httptest bridge
 	// (fiberHTTPTestHandler). Stored on the per-request fasthttp ctx instead of
@@ -549,6 +636,17 @@ type fiberResponseWriter struct {
 	header      http.Header
 	wroteHeader bool
 	status      int
+
+	// HTTP response trailer support. When a handler declares a "Trailer"
+	// response header (e.g. peer NetInfoHandler sets "Trailer: FinalStatus"
+	// then writes the FinalStatus value after the body), the bridge switches to
+	// chunked transfer-encoding so fasthttp can emit the trailer values after
+	// the body. net/http's ResponseWriter allows setting a declared trailer key
+	// via w.Header() after WriteHeader; without this the value would be lost
+	// because syncHeaders runs at WriteHeader time.
+	hasTrailers  bool
+	trailerNames []string
+	bodyBuf      bytes.Buffer
 }
 
 // seedResponseHeader returns a fresh http.Header pre-populated with the
@@ -583,7 +681,36 @@ func (w *fiberResponseWriter) syncHeaders() {
 	// Preserve the exact header-name casing chosen by legacy handlers (e.g. the
 	// literal "ETag" set via direct map assignment for broken S3 clients).
 	w.c.Response().Header.DisableNormalizing()
+
+	// Detect declared trailers (e.g. "Trailer: FinalStatus") and register them
+	// with fasthttp. Declaring a trailer forces chunked encoding at finalize and
+	// makes fasthttp emit the value after the body. fasthttp also excludes the
+	// declared keys from the main header block and appends the "Trailer" header
+	// itself, so we must not write the literal "Trailer" header here.
+	if tv := w.header["Trailer"]; len(tv) > 0 {
+		for _, raw := range tv {
+			for _, name := range strings.Split(raw, ",") {
+				name = strings.TrimSpace(name)
+				if name == "" {
+					continue
+				}
+				if err := w.c.Response().Header.SetTrailer(name); err == nil {
+					w.trailerNames = append(w.trailerNames, name)
+					w.hasTrailers = true
+				}
+			}
+		}
+	}
+
 	for k, vv := range w.header {
+		if w.hasTrailers {
+			if k == "Trailer" {
+				continue // managed by fasthttp via SetTrailer above
+			}
+			if w.isDeclaredTrailer(k) {
+				continue // emitted as a trailer at finalize, not in the header block
+			}
+		}
 		w.c.Response().Header.Del(k)
 		for _, v := range vv {
 			w.c.Response().Header.Add(k, v)
@@ -591,9 +718,25 @@ func (w *fiberResponseWriter) syncHeaders() {
 	}
 }
 
+// isDeclaredTrailer reports whether the canonical header key was declared as a
+// response trailer.
+func (w *fiberResponseWriter) isDeclaredTrailer(key string) bool {
+	for _, name := range w.trailerNames {
+		if http.CanonicalHeaderKey(name) == http.CanonicalHeaderKey(key) {
+			return true
+		}
+	}
+	return false
+}
+
 func (w *fiberResponseWriter) Write(b []byte) (int, error) {
 	if !w.wroteHeader {
 		w.WriteHeader(http.StatusOK)
+	}
+	if w.hasTrailers {
+		// Buffer the body; it is emitted via a chunked stream writer at finalize
+		// so the declared trailers can be written after it.
+		return w.bodyBuf.Write(b)
 	}
 	return w.c.Write(b)
 }
@@ -612,6 +755,11 @@ func (w *fiberResponseWriter) Flush() {
 	if !w.wroteHeader {
 		w.WriteHeader(http.StatusOK)
 	}
+	if w.hasTrailers {
+		// Body is buffered and emitted (chunked) at finalize so trailers can be
+		// written after it; there is nothing meaningful to flush mid-handler.
+		return
+	}
 	if bw := w.c.Response().BodyWriter(); bw != nil {
 		if f, ok := bw.(interface{ Flush() error }); ok {
 			_ = f.Flush()
@@ -619,9 +767,29 @@ func (w *fiberResponseWriter) Flush() {
 	}
 }
 
-// finalize applies the default status when a legacy handler did not write a response.
+// finalize applies the default status when a legacy handler did not write a
+// response, and emits any declared trailers. When trailers are present the
+// (possibly empty) buffered body is written through a chunked stream writer so
+// fasthttp serializes the trailer values after the body, matching net/http
+// trailer semantics.
 func (w *fiberResponseWriter) finalize() {
 	if !w.wroteHeader {
 		w.WriteHeader(w.status)
 	}
+	if !w.hasTrailers {
+		return
+	}
+	// Handlers set the trailer values on the http.Header after WriteHeader.
+	for _, name := range w.trailerNames {
+		if v := w.header.Get(name); v != "" {
+			w.c.Response().Header.Set(name, v)
+		}
+	}
+	body := append([]byte(nil), w.bodyBuf.Bytes()...)
+	w.c.Response().SetBodyStreamWriter(func(sw *bufio.Writer) {
+		if len(body) > 0 {
+			_, _ = sw.Write(body)
+		}
+		_ = sw.Flush()
+	})
 }

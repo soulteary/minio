@@ -17,9 +17,11 @@
 package cmd
 
 import (
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/gofiber/fiber/v3"
 )
@@ -129,5 +131,87 @@ func TestStreamHandlerErrorResponse(t *testing.T) {
 	}
 	if rec.Body.String() != "<Error/>" {
 		t.Fatalf("expected error body, got %q", rec.Body.String())
+	}
+}
+
+// TestStreamHandlerKeepAliveFlush verifies that a keepalive-style handler (the
+// pattern used by ListenNotification / admin trace / console log: write a byte,
+// then w.(http.Flusher).Flush()) is compatible with the streaming bridge and
+// that every write is delivered. Over the buffered bridge these handlers cannot
+// flush at all (responseBodyWriter has no Flush), so they must stream.
+func TestStreamHandlerKeepAliveFlush(t *testing.T) {
+	app := newFiberApp()
+	app.Get("/stream", toMinioStreamHandler(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		w.WriteHeader(http.StatusOK)
+		flusher, ok := w.(http.Flusher)
+		if !ok {
+			t.Errorf("stream response writer does not implement http.Flusher")
+			return
+		}
+		for i := 0; i < 5; i++ {
+			if _, err := w.Write([]byte(" ")); err != nil {
+				return
+			}
+			flusher.Flush()
+		}
+	}))
+
+	handler := fiberHTTPTestHandler(app)
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/stream", nil))
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", rec.Code)
+	}
+	if rec.Body.String() != "     " {
+		t.Fatalf("expected 5 streamed keepalive spaces, got %q", rec.Body.String())
+	}
+}
+
+// TestStreamHandlerWriteFailsAfterConsumerClose verifies the disconnect
+// detection that long-lived streaming handlers rely on to terminate: once the
+// consumer (the client connection) goes away, the underlying pipe is closed and
+// the next Write returns an error, breaking the handler's keepalive loop. The
+// buffered bridge lacks this property (its Write only appends to an in-memory
+// buffer and never errors), which would leak the handler goroutine forever.
+func TestStreamHandlerWriteFailsAfterConsumerClose(t *testing.T) {
+	pr, pw := io.Pipe()
+	w := &fiberStreamResponseWriter{
+		header: http.Header{},
+		status: http.StatusOK,
+		pw:     pw,
+		ready:  make(chan struct{}),
+	}
+
+	done := make(chan error, 1)
+	go func() {
+		for {
+			if _, err := w.Write([]byte(" ")); err != nil {
+				done <- err
+				return
+			}
+			w.Flush()
+		}
+	}()
+
+	// Receive a few keepalive writes, mimicking a client reading the stream.
+	buf := make([]byte, 1)
+	for i := 0; i < 3; i++ {
+		if _, err := io.ReadFull(pr, buf); err != nil {
+			t.Fatalf("reading keepalive byte %d: %v", i, err)
+		}
+	}
+
+	// Simulate the client disconnecting.
+	_ = pr.Close()
+
+	select {
+	case err := <-done:
+		if err == nil {
+			t.Fatalf("expected a write error after consumer close")
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatalf("handler loop did not terminate after consumer disconnect")
 	}
 }

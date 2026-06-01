@@ -28,7 +28,15 @@ import (
 var (
 	fiberAmzCopySourceRegex      = regexp.MustCompile(`.*?(\\/|%2F).*?`)
 	fiberAmzSnowballExtractRegex = regexp.MustCompile(`(?i)^true$`)
-	fiberMultipartFormRegex      = regexp.MustCompile(`(?i)^multipart/form-data`)
+	// SECURITY (CVE-2023-28434): anchor the full Content-Type value so the
+	// post-policy route only matches when the media type is exactly
+	// "multipart/form-data" (optionally followed by ;parameters). The previous
+	// unanchored prefix pattern also matched values like
+	// "multipart/form-data-evil", letting the router disagree with the
+	// post-policy auth classification (isRequestPostPolicySignatureV4) and
+	// enabling reserved/meta bucket protection bypass. Matches the strict
+	// media-type check used in auth-handler.go. See minio/minio#16849.
+	fiberMultipartFormRegex = regexp.MustCompile(`(?i)^multipart/form-data\s*(;.*)?$`)
 )
 
 func notImplementedHandlerFiber(c fiber.Ctx) error {
@@ -137,7 +145,11 @@ func objectS3APIRules(api objectAPIHandlers) []routeRule {
 		s3Route([]string{http.MethodGet}, "getobjecttagging", true, api.GetObjectTaggingHandler, qm("tagging", ""), nil),
 		s3Route([]string{http.MethodPut}, "putobjecttagging", true, api.PutObjectTaggingHandler, qm("tagging", ""), nil),
 		s3Route([]string{http.MethodDelete}, "deleteobjecttagging", true, api.DeleteObjectTaggingHandler, qm("tagging", ""), nil),
-		s3Route([]string{http.MethodPost}, "selectobjectcontent", true, api.SelectObjectContentHandler,
+		// SelectObjectContent streams framed record/progress/keepalive messages
+		// (1s continuation keepalive) and can return large result sets, so it must
+		// stream like GetObject: the buffered bridge would accumulate the entire
+		// framed output in memory and silently drop the keepalive.
+		s3RouteStream([]string{http.MethodPost}, "selectobjectcontent", true, api.SelectObjectContentHandler,
 			qm("select", "", "select-type", "2"), nil),
 		s3Route([]string{http.MethodGet}, "getobjectretention", false, api.GetObjectRetentionHandler, qm("retention", ""), nil),
 		s3Route([]string{http.MethodGet}, "getobjectlegalhold", false, api.GetObjectLegalHoldHandler, qm("legal-hold", ""), nil),
@@ -164,7 +176,11 @@ func bucketS3APIRules(api objectAPIHandlers) []routeRule {
 		s3Route([]string{http.MethodGet}, "getbucketreplicationconfiguration", false, api.GetBucketReplicationConfigHandler, qm("replication", ""), nil),
 		s3Route([]string{http.MethodGet}, "getbucketversioning", false, api.GetBucketVersioningHandler, qm("versioning", ""), nil),
 		s3Route([]string{http.MethodGet}, "getbucketnotification", false, api.GetBucketNotificationHandler, qm("notification", ""), nil),
-		s3Route([]string{http.MethodGet}, "listennotification", false, api.ListenNotificationHandler, qm("events", ".*"), nil),
+		// listennotification is a long-lived event stream that writes keepalive
+		// whitespace and relies on per-write Flush + client-disconnect detection.
+		// It MUST use the streaming bridge: the buffered bridge would buffer the
+		// (unbounded) body in memory, never deliver it, and never terminate.
+		s3RouteStream([]string{http.MethodGet}, "listennotification", false, api.ListenNotificationHandler, qm("events", ".*"), nil),
 		s3Route([]string{http.MethodGet}, "getbucketacl", false, api.GetBucketACLHandler, qm("acl", ""), nil),
 		s3Route([]string{http.MethodPut}, "putbucketacl", false, api.PutBucketACLHandler, qm("acl", ""), nil),
 		s3Route([]string{http.MethodGet}, "getbucketcors", false, api.GetBucketCorsHandler, qm("cors", ""), nil),
@@ -205,7 +221,8 @@ func bucketS3APIRules(api objectAPIHandlers) []routeRule {
 
 func rootS3APIRules(api objectAPIHandlers) []routeRule {
 	return []routeRule{
-		s3Route([]string{http.MethodGet}, "listennotification", false, api.ListenNotificationHandler, qm("events", ".*"), nil),
+		// See bucketS3APIRules: listennotification must stream (see s3RouteStream).
+		s3RouteStream([]string{http.MethodGet}, "listennotification", false, api.ListenNotificationHandler, qm("events", ".*"), nil),
 		s3Route([]string{http.MethodGet}, "listbuckets", false, api.ListBucketsHandler, nil, nil),
 	}
 }

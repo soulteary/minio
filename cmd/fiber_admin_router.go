@@ -138,11 +138,11 @@ func registerAdminRouterFiber(app *fiber.App, enableConfigOps, enableIAMOps bool
 
 		registerAdminRoute(app, verPrefix+"/trace", []routeRule{{
 			methods:   []string{http.MethodGet},
-			handler:   toMinioHandler(adminAPI.TraceHandler),
+			handler:   toMinioStreamHandler(adminAPI.TraceHandler),
 			skipTrace: true,
 		}})
 		registerAdminRoute(app, verPrefix+"/log", []routeRule{
-			adminRule(http.MethodGet, adminAPI.ConsoleLogHandler, false, nil),
+			adminStreamRule(http.MethodGet, adminAPI.ConsoleLogHandler, nil),
 		})
 
 		registerAdminRoute(app, verPrefix+"/kms/key/create", []routeRule{
@@ -153,14 +153,19 @@ func registerAdminRouterFiber(app *fiber.App, enableConfigOps, enableIAMOps bool
 		})
 
 		if !globalIsGateway {
+			// HealthInfo streams partial results with a 5s keepalive and a deadline
+			// of up to 1h; BandwidthMonitor is an unbounded event stream. Both must
+			// use the streaming bridge so output is delivered incrementally, the
+			// keepalive reaches the client, memory stays bounded, and (for
+			// BandwidthMonitor) the handler terminates on client disconnect.
 			registerAdminRoute(app, verPrefix+"/obdinfo", []routeRule{
-				adminRule(http.MethodGet, adminAPI.HealthInfoHandler, true, nil),
+				adminStreamRule(http.MethodGet, adminAPI.HealthInfoHandler, nil),
 			})
 			registerAdminRoute(app, verPrefix+"/healthinfo", []routeRule{
-				adminRule(http.MethodGet, adminAPI.HealthInfoHandler, true, nil),
+				adminStreamRule(http.MethodGet, adminAPI.HealthInfoHandler, nil),
 			})
 			registerAdminRoute(app, verPrefix+"/bandwidth", []routeRule{
-				adminRule(http.MethodGet, adminAPI.BandwidthMonitorHandler, true, nil),
+				adminStreamRule(http.MethodGet, adminAPI.BandwidthMonitorHandler, nil),
 			})
 		}
 	}
@@ -297,5 +302,19 @@ func adminRule(method string, h func(http.ResponseWriter, *http.Request), traceH
 		queries:      queries,
 		handler:      toMinioHandler(h),
 		traceHeaders: traceHdrs,
+	}
+}
+
+// adminStreamRule registers a long-lived streaming admin handler (e.g. the
+// console log stream) through the streaming bridge so that per-write Flush is
+// delivered to the client and client disconnects propagate back to the handler.
+// skipTrace is set because the trace-all wrapper would otherwise buffer the
+// entire (unbounded) streamed body whenever a trace subscriber is active.
+func adminStreamRule(method string, h func(http.ResponseWriter, *http.Request), queries map[string]string) routeRule {
+	return routeRule{
+		methods:   []string{method},
+		queries:   queries,
+		handler:   toMinioStreamHandler(h),
+		skipTrace: true,
 	}
 }

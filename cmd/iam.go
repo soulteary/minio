@@ -1339,10 +1339,13 @@ func (sys *IAMSys) CreateUser(accessKey string, uinfo madmin.UserInfo) error {
 
 	sys.iamUsersMap[accessKey] = u.Credentials
 
-	// Set policy if specified.
-	if uinfo.PolicyName != "" {
-		return sys.policyDBSet(accessKey, uinfo.PolicyName, regularUser, false)
-	}
+	// SECURITY (CVE-2021-43858): the add-user admin API must NOT apply policy
+	// changes. A regular user is permitted to call this API to rotate their own
+	// secret key, so honoring uinfo.PolicyName here would let them grant
+	// themselves an arbitrary (e.g. consoleAdmin) policy and escalate
+	// privileges. Policy assignment is only allowed through the dedicated
+	// set-policy admin API (SetPolicy -> policyDBSet). The PolicyName field is
+	// intentionally ignored here; matches upstream fix minio/minio#13976.
 	return nil
 }
 

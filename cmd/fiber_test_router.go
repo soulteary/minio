@@ -85,7 +85,7 @@ func registerBucketLevelFuncFiber(objectRules, bucketRules *[]routeRule, api obj
 		case "PutBucketNotification":
 			*bucketRules = append(*bucketRules, s3Route([]string{http.MethodPut}, "putbucketnotification", false, api.PutBucketNotificationHandler, qm("notification", ""), nil))
 		case "ListenNotification":
-			*bucketRules = append(*bucketRules, s3Route([]string{http.MethodGet}, "listennotification", false, api.ListenNotificationHandler, qm("events", ".*"), nil))
+			*bucketRules = append(*bucketRules, s3RouteStream([]string{http.MethodGet}, "listennotification", false, api.ListenNotificationHandler, qm("events", ".*"), nil))
 		}
 	}
 }
