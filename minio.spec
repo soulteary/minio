@@ -1,3 +1,8 @@
+# NOTE: This RPM spec is inherited from upstream and is STALE for this fork.
+# The pinned tag/commit below (RELEASE.2020-11-25...) and the Source0 URL
+# (dl.minio.io) no longer match this fork and are not maintained. Update the
+# tag/commit/sources before using this spec to build an RPM, or rely on the
+# .goreleaser.yml nfpms section for deb/rpm packaging instead.
 %define         tag     RELEASE.2020-11-25T22-36-25Z
 %define         subver  %(echo %{tag} | sed -e 's/[^0-9]//g')
 # git fetch https://github.com/minio/minio.git refs/tags/RELEASE.2020-11-25T22-36-25Z

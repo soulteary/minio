@@ -18,7 +18,7 @@ var webpack = require('webpack')
 var path = require('path')
 var glob = require('glob-all')
 var CopyWebpackPlugin = require('copy-webpack-plugin')
-var PurgecssPlugin = require('purgecss-webpack-plugin')
+var { PurgeCSSPlugin } = require('purgecss-webpack-plugin')
 
 var exports = {
   context: __dirname,
@@ -36,10 +36,7 @@ var exports = {
         test: /\.js$/,
         exclude: /(node_modules|bower_components)/,
         use: [{
-          loader: 'babel-loader',
-          options: {
-            presets: ['react', 'es2015']
-          }
+          loader: 'babel-loader'
         }]
       }, {
         test: /\.less$/,
@@ -59,37 +56,26 @@ var exports = {
         }]
       }, {
         test: /\.(eot|woff|woff2|ttf|svg|png)/,
-        use: [{
-          loader: 'url-loader'
-        }]
+        type: 'asset/inline'
       }]
-  },
-  node:{
-    fs:'empty'
   },
   devServer: {
     historyApiFallback: {
       index: '/minio/'
     },
-    proxy: {
-      '/minio/webrpc': {
+    proxy: [
+      {
+        context: ['/minio/webrpc'],
         target: 'http://localhost:9000',
         secure: false,
         headers: {'Host': "localhost:9000"}
       },
-      '/minio/upload/*': {
-        target: 'http://localhost:9000',
-        secure: false
-      },
-      '/minio/download/*': {
-        target: 'http://localhost:9000',
-        secure: false
-      },
-      '/minio/zip': {
+      {
+        context: ['/minio/upload', '/minio/download', '/minio/zip'],
         target: 'http://localhost:9000',
         secure: false
       }
-    }
+    ]
   },
   plugins: [
     new CopyWebpackPlugin({patterns: [
@@ -104,7 +90,7 @@ var exports = {
       {from: 'app/index.html'}
     ]}),
     new webpack.ContextReplacementPlugin(/moment[\\\/]locale$/, /^\.\/(en)$/),
-    new PurgecssPlugin({
+    new PurgeCSSPlugin({
       paths: glob.sync([
         path.join(__dirname, 'app/index.html'),
         path.join(__dirname, 'app/js/*.js')

@@ -7,7 +7,6 @@ MinIO是一个[云原生](https://baike.baidu.com/item/Cloud%20Native/19865304?f
 | [`Docker Swarm`](https://docs.min.io/cn/deploy-minio-on-docker-swarm) |
 | [`Docker Compose`](https://docs.min.io/cn/deploy-minio-on-docker-compose) |
 | [`Kubernetes`](https://docs.min.io/cn/deploy-minio-on-kubernetes) |
-| [`DC/OS`](https://docs.min.io/cn/deploy-minio-on-dc-os) |
 
 ## 为什么说MinIO是云原生的（cloud-native）?
 云原生这个词代表的是一些思想的集合，比如微服务部署，可伸缩，而不是说把一个单体应用改造成容器部署。一个云原生的应用在设计时就考虑了移植性和可伸缩性，而且可以通过简单的复制即可实现水平扩展。现在兴起的编排平台，像Swarm、Kubernetes以及DC/OS，让大规模集群的复制和管理变得前所未有的简单，哪里不会点哪里。

@@ -18,7 +18,7 @@ var webpack = require('webpack')
 var path = require('path')
 var glob = require('glob-all')
 var CopyWebpackPlugin = require('copy-webpack-plugin')
-var PurgecssPlugin = require('purgecss-webpack-plugin')
+var { PurgeCSSPlugin } = require('purgecss-webpack-plugin')
 
 var exports = {
   context: __dirname,
@@ -35,10 +35,7 @@ var exports = {
         test: /\.js$/,
         exclude: /(node_modules|bower_components)/,
         use: [{
-          loader: 'babel-loader',
-          options: {
-            presets: ['react', 'es2015']
-          }
+          loader: 'babel-loader'
         }]
       }, {
         test: /\.less$/,
@@ -58,13 +55,8 @@ var exports = {
         }]
       }, {
         test: /\.(eot|woff|woff2|ttf|svg|png)/,
-        use: [{
-          loader: 'url-loader'
-        }]
+        type: 'asset/inline'
       }]
-  },
-  node:{
-    fs:'empty'
   },
   plugins: [
     new CopyWebpackPlugin({patterns: [
@@ -79,7 +71,7 @@ var exports = {
       {from: 'app/index.html'}
     ]}),
     new webpack.ContextReplacementPlugin(/moment[\\\/]locale$/, /^\.\/(en)$/),
-    new PurgecssPlugin({
+    new PurgeCSSPlugin({
       paths: glob.sync([
         path.join(__dirname, 'app/index.html'),
         path.join(__dirname, 'app/js/*.js')

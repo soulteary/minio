@@ -228,7 +228,7 @@ certtool.exe --generate-self-signed --load-privkey private.key --template cert.c
 
 ## <a name="install-certificates-from-third-party-cas"></a>4. Install Certificates from Third-party CAs
 
-MinIO can connect to other servers, including MinIO nodes or other server types such as NATs and Redis. If these servers use certificates that were not registered with a known CA, add trust for these certificates to MinIO Server by placing these certificates under one of the following MinIO configuration paths:
+MinIO can connect to other servers, including MinIO nodes or other server types such as Redis and PostgreSQL. If these servers use certificates that were not registered with a known CA, add trust for these certificates to MinIO Server by placing these certificates under one of the following MinIO configuration paths:
 * **Linux:** `~/.minio/certs/CAs/`
 * **Windows**: `C:\Users\<Username>\.minio\certs\CAs`
 

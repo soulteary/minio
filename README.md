@@ -8,6 +8,15 @@ MinIO is a High Performance Object Storage released under Apache License v2.0. I
 This README provides quickstart instructions on running MinIO on baremetal hardware, including Docker-based installations. For Kubernetes environments,
 use the [MinIO Kubernetes Operator](https://github.com/minio/operator/blob/master/README.md).
 
+## About this fork
+
+This repository is a customized fork of MinIO and differs from upstream in the following ways:
+
+- **HTTP layer**: the request router is built on [`gofiber/fiber/v3`](https://github.com/gofiber/fiber) instead of `gorilla/mux`.
+- **Bucket notification targets**: only `elasticsearch`, `mysql`, `postgresql`, `redis`, and `webhook` are supported. The message-queue targets (Kafka, NATS, NATS Streaming, NSQ, AMQP, MQTT) have been removed.
+- **Gateways**: only the `nas` and `s3` gateways remain. The `azure`, `gcs`, and `hdfs` gateways have been removed.
+- **Toolchain**: requires Go `1.26` or newer (see `go.mod`).
+
 # Docker Installation
 
 Use the following commands to run a standalone MinIO server on a Docker container.

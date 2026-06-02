@@ -28,7 +28,7 @@ $ helm install stable/minio
 | 参数                  | 描述                         | 默认值                                                 |
 |----------------------------|-------------------------------------|---------------------------------------------------------|
 | `image`                    | MinIO镜像名称                | `minio/minio`                                           |
-| `imageTag`                 | MinIO镜像tag. 可选值在 [这里](https://hub.docker.com/r/minio/minio/tags/).| `RELEASE.2017-08-05T00-00-53Z`|
+| `imageTag`                 | MinIO镜像tag. 可选值在 [这里](https://hub.docker.com/r/minio/minio/tags/).| `latest`|
 | `imagePullPolicy`          | Image pull policy                   | `Always`                                                |
 | `mode`                     | MinIO server模式 (`standalone`, `shared` 或者 `distributed`)| `standalone`                     |
 | `numberOfNodes`            | 节点数 (仅对分布式模式生效). 可选值 4 <= x <= 16 | `4`    |
