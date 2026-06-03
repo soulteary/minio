@@ -1,4 +1,4 @@
-# MinIO Erasure Code Quickstart Guide [![Slack](https://slack.min.io/slack?type=svg)](https://slack.min.io)
+# MinIO Erasure Code Quickstart Guide
 
 MinIO protects data against hardware failures and silent data corruption using erasure code and checksums. With the highest level of redundancy, you may lose up to half (N/2) of the total drives and still be able to recover the data.
 
@@ -44,7 +44,7 @@ Example: Start MinIO server in a 12 drives setup, using MinIO binary.
 minio server /data{1...12}
 ```
 
-Example: Start MinIO server in a 8 drives setup, using MinIO Docker image. 
+Example: Start MinIO server in a 8 drives setup, using MinIO Docker image.
 
 ```sh
 docker run -p 9000:9000 --name minio \

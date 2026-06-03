@@ -1,4 +1,4 @@
-# Deploy MinIO on Docker Swarm [![Slack](https://slack.min.io/slack?type=svg)](https://slack.min.io)  [![Docker Pulls](https://img.shields.io/docker/pulls/minio/minio.svg?maxAge=604800)](https://hub.docker.com/r/minio/minio/)
+# Deploy MinIO on Docker Swarm
 
 Docker Engine provides cluster management and orchestration features in Swarm mode. MinIO server can be easily deployed in distributed mode on Swarm to create a multi-tenant, highly-available and scalable object store.
 
@@ -15,11 +15,11 @@ Create a swarm on the manager node by running
 ```shell
 docker swarm init --advertise-addr <MANAGER-IP>
 ```
-Once the swarm is initialized, you'll see the below response. 
+Once the swarm is initialized, you'll see the below response.
 
 ```shell
 docker swarm join \
-  --token  SWMTKN-1-49nj1cmql0jkz5s954yi3oex3nedyz0fb0xx14ie39trti4wxv-8vxv8rssmk743ojnwacrr2e7c \
+  --token  <SWARM-MANAGER-TOKEN> \
   192.168.99.100:2377
 ```
 
@@ -34,8 +34,8 @@ echo "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY" | docker secret create secret_ke
 
 ## 4. Deploy distributed MinIO services
 
-The example MinIO stack uses 4 Docker volumes, which are created automatically by deploying the stack. We have to make sure that the services in the stack are always (re)started on the same node, where the service is deployed the first time. 
-Otherwise Docker will create a new volume upon restart of the service on another Docker node, which is not in sync with the other volumes and the stack will fail to start healthy. 
+The example MinIO stack uses 4 Docker volumes, which are created automatically by deploying the stack. We have to make sure that the services in the stack are always (re)started on the same node, where the service is deployed the first time.
+Otherwise Docker will create a new volume upon restart of the service on another Docker node, which is not in sync with the other volumes and the stack will fail to start healthy.
 Before deploying the stack, add labels to the Docker nodes where you want the minio services to run:
 
 ```

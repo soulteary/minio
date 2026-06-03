@@ -1,4 +1,4 @@
-# MinIO Server Debugging Guide [![Slack](https://slack.min.io/slack?type=svg)](https://slack.min.io) [![Docker Pulls](https://img.shields.io/docker/pulls/minio/minio.svg?maxAge=604800)](https://hub.docker.com/r/minio/minio/)
+# MinIO Server Debugging Guide
 
 ### HTTP Trace
 HTTP tracing can be enabled by using [`mc admin trace`](https://github.com/minio/mc/blob/master/docs/minio-admin-complete-guide.md#command-trace---display-minio-server-http-trace) command.
@@ -39,18 +39,18 @@ mc admin subnet health myminio
 
 The output printed will be of the form
 ```sh
-● Admin Info ... ✔ 
-● CPU ... ✔ 
-● Disk Hardware ... ✔ 
-● Os Info ... ✔ 
-● Mem Info ... ✔ 
-● Process Info ... ✔ 
-● Config ... ✔ 
-● Drive ... ✔ 
-● Net ... ✔ 
+● Admin Info ... ✔
+● CPU ... ✔
+● Disk Hardware ... ✔
+● Os Info ... ✔
+● Mem Info ... ✔
+● Process Info ... ✔
+● Config ... ✔
+● Drive ... ✔
+● Net ... ✔
 *********************************************************************************
                                    WARNING!!
-     ** THIS FILE MAY CONTAIN SENSITIVE INFORMATION ABOUT YOUR ENVIRONMENT ** 
+     ** THIS FILE MAY CONTAIN SENSITIVE INFORMATION ABOUT YOUR ENVIRONMENT **
      ** PLEASE INSPECT CONTENTS BEFORE SHARING IT ON ANY PUBLIC FORUM **
 *********************************************************************************
 mc: Health data saved to dc-11-health_20200321053323.json.gz

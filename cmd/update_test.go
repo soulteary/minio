@@ -1,5 +1,6 @@
 /*
  * MinIO Cloud Storage, (C) 2017 MinIO, Inc.
+ * Modifications and additions (C) 2025-2026 soulteary, https://github.com/soulteary/minio
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -89,19 +90,33 @@ func TestDownloadURL(t *testing.T) {
 	defer os.Setenv("MINIO_CI_CD", sci)
 
 	minioVersion1 := releaseTimeToReleaseTag(UTCNow())
+
+	// By default this fork has no release URL configured, so there is no
+	// download hint and updates are effectively disabled.
+	sru := os.Getenv(envMinioUpdateReleaseURL)
+	os.Unsetenv(envMinioUpdateReleaseURL)
+	defer os.Setenv(envMinioUpdateReleaseURL, sru)
+	if durl := getDownloadURL(minioVersion1); durl != "" {
+		t.Errorf("Expected empty download URL when %s is unset, got %s", envMinioUpdateReleaseURL, durl)
+	}
+
+	// With a release URL configured, the usual per-environment hints apply.
+	os.Setenv(envMinioUpdateReleaseURL, "https://example.com/minio/release/")
+	base := minioReleaseBaseURL()
+
 	durl := getDownloadURL(minioVersion1)
 	if IsDocker() {
-		if durl != "docker pull minio/minio:"+minioVersion1 {
-			t.Errorf("Expected %s, got %s", "docker pull minio/minio:"+minioVersion1, durl)
+		if durl != "docker pull soulteary/minio:"+minioVersion1 {
+			t.Errorf("Expected %s, got %s", "docker pull soulteary/minio:"+minioVersion1, durl)
 		}
 	} else {
 		if runtime.GOOS == "windows" {
-			if durl != minioReleaseURL+"minio.exe" {
-				t.Errorf("Expected %s, got %s", minioReleaseURL+"minio.exe", durl)
+			if durl != base+"minio.exe" {
+				t.Errorf("Expected %s, got %s", base+"minio.exe", durl)
 			}
 		} else {
-			if durl != minioReleaseURL+"minio" {
-				t.Errorf("Expected %s, got %s", minioReleaseURL+"minio", durl)
+			if durl != base+"minio" {
+				t.Errorf("Expected %s, got %s", base+"minio", durl)
 			}
 		}
 	}

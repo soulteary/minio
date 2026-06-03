@@ -1,8 +1,8 @@
-# MinIO Storage Class Quickstart Guide [![Slack](https://slack.min.io/slack?type=svg)](https://slack.min.io)
+# MinIO Storage Class Quickstart Guide
 
 MinIO server supports storage class in erasure coding mode. This allows configurable data and parity disks per object.
 
-This page is intended as a summary of MinIO Erasure Coding. For a more complete explanation, see https://docs.min.io/minio/baremetal/concepts/erasure-coding.html. 
+This page is intended as a summary of MinIO Erasure Coding. For a more complete explanation, see https://docs.min.io/minio/baremetal/concepts/erasure-coding.html.
 
 ## Overview
 

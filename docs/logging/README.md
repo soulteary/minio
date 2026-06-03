@@ -1,4 +1,4 @@
-# MinIO Logging Quickstart Guide [![Slack](https://slack.min.io/slack?type=svg)](https://slack.min.io)
+# MinIO Logging Quickstart Guide
 This document explains how to configure MinIO server to log to different logging targets.
 
 ## Log Targets
@@ -38,7 +38,7 @@ minio server /mnt/data
 Assuming `mc` is already [configured](https://docs.min.io/docs/minio-client-quickstart-guide.html)
 ```
 mc admin config get myminio/ audit_webhook
-audit_webhook:name1 enable=off endpoint= auth_token= client_cert= client_key= 
+audit_webhook:name1 enable=off endpoint= auth_token= client_cert= client_key=
 ```
 
 ```

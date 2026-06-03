@@ -1,5 +1,6 @@
 /*
  * MinIO Cloud Storage, (C) 2015-2021 MinIO, Inc.
+ * Modifications and additions (C) 2025-2026 soulteary, https://github.com/soulteary/minio
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -44,16 +45,44 @@ import (
 const (
 	minioReleaseTagTimeLayout = "2006-01-02T15-04-05Z"
 	minioOSARCH               = runtime.GOOS + "-" + runtime.GOARCH
-	minioReleaseURL           = "https://dl.min.io/server/minio/release/" + minioOSARCH + SlashSeparator
+
+	// envMinioUpdateReleaseURL configures the base URL this fork uses to look
+	// for new releases, both for the startup update check and for in-place
+	// self-update (`mc admin update`). This fork does NOT operate a release
+	// server, so it is empty by default: with no value set, the startup update
+	// check is skipped entirely (no network call) and `mc admin update` without
+	// an explicit URL is rejected, so the running fork binary is never silently
+	// replaced by the upstream binary. Point it at your own release directory,
+	// e.g. "https://example.com/minio/release/"; the per-OS/arch path segment
+	// (e.g. "linux-amd64/") is appended automatically.
+	envMinioUpdateReleaseURL = "MINIO_UPDATE_RELEASE_URL"
 
 	envMinisignPubKey = "MINIO_UPDATE_MINISIGN_PUBKEY"
 	updateTimeout     = 10 * time.Second
 )
 
-var (
-	// For windows our files have .exe additionally.
-	minioReleaseWindowsInfoURL = minioReleaseURL + "minio.exe.sha256sum"
-)
+// minioReleaseBaseURL returns the configured per-OS/arch release base URL for
+// this fork (with a trailing slash), or "" when updates are not configured.
+func minioReleaseBaseURL() string {
+	base := strings.TrimSpace(env.Get(envMinioUpdateReleaseURL, ""))
+	if base == "" {
+		return ""
+	}
+	if !strings.HasSuffix(base, SlashSeparator) {
+		base += SlashSeparator
+	}
+	return base + minioOSARCH + SlashSeparator
+}
+
+// minioReleaseWindowsInfoURL returns the windows release-info URL, or "" when
+// updates are not configured.
+func minioReleaseWindowsInfoURL() string {
+	base := minioReleaseBaseURL()
+	if base == "" {
+		return ""
+	}
+	return base + "minio.exe.sha256sum"
+}
 
 // minioVersionToReleaseTime - parses a standard official release
 // MinIO version string.
@@ -449,6 +478,13 @@ const (
 )
 
 func getDownloadURL(releaseTag string) (downloadURL string) {
+	// This fork does not operate a release server; if no release URL is
+	// configured, there is no meaningful download hint to show.
+	base := minioReleaseBaseURL()
+	if base == "" {
+		return ""
+	}
+
 	// Check if we are in DCOS environment, return
 	// deployment guide for update procedures.
 	if IsDCOS() {
@@ -464,15 +500,15 @@ func getDownloadURL(releaseTag string) (downloadURL string) {
 	// Check if we are docker environment, return docker update command
 	if IsDocker() {
 		// Construct release tag name.
-		return fmt.Sprintf("docker pull minio/minio:%s", releaseTag)
+		return fmt.Sprintf("docker pull soulteary/minio:%s", releaseTag)
 	}
 
 	// For binary only installations, we return link to the latest binary.
 	if runtime.GOOS == "windows" {
-		return minioReleaseURL + "minio.exe"
+		return base + "minio.exe"
 	}
 
-	return minioReleaseURL + "minio"
+	return base + "minio"
 }
 
 func getUpdateReaderFromURL(u *url.URL, transport http.RoundTripper, mode string) (io.ReadCloser, error) {

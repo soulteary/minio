@@ -1,4 +1,4 @@
-# Disk Cache Quickstart Guide [![Slack](https://slack.min.io/slack?type=svg)](https://slack.min.io)
+# Disk Cache Quickstart Guide
 
 Disk caching feature here refers to the use of caching disks to store content closer to the tenants. For instance, if you access an object from a lets say `gateway s3` setup and download the object that gets cached, each subsequent request on the object gets served directly from the cache drives until it expires. This feature allows MinIO users to have
 
@@ -29,8 +29,8 @@ export MINIO_CACHE_WATERMARK_HIGH=90
 minio gateway s3
 ```
 
-The `CACHE_WATERMARK` numbers are percentages of `CACHE_QUOTA`. 
-In the example above this means that  `MINIO_CACHE_WATERMARK_LOW` is effectively `0.8 * 0.7 * 100 = 56%` and the `MINIO_CACHE_WATERMARK_HIGH` is effectively `0.8 * 0.9 * 100 = 72%` of total disk space.     
+The `CACHE_WATERMARK` numbers are percentages of `CACHE_QUOTA`.
+In the example above this means that  `MINIO_CACHE_WATERMARK_LOW` is effectively `0.8 * 0.7 * 100 = 56%` and the `MINIO_CACHE_WATERMARK_HIGH` is effectively `0.8 * 0.9 * 100 = 72%` of total disk space.
 
 
 ### 3. Test your setup

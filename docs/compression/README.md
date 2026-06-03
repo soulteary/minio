@@ -1,18 +1,18 @@
-# Compression Guide [![Slack](https://slack.min.io/slack?type=svg)](https://slack.min.io)
+# Compression Guide
 
-MinIO server allows streaming compression to ensure efficient disk space usage. 
-Compression happens inflight, i.e objects are compressed before being written to disk(s). 
-MinIO uses [`klauspost/compress/s2`](https://github.com/klauspost/compress/tree/master/s2) 
+MinIO server allows streaming compression to ensure efficient disk space usage.
+Compression happens inflight, i.e objects are compressed before being written to disk(s).
+MinIO uses [`klauspost/compress/s2`](https://github.com/klauspost/compress/tree/master/s2)
 streaming compression due to its stability and performance.
 
-This algorithm is specifically optimized for machine generated content. 
+This algorithm is specifically optimized for machine generated content.
 Write throughput is typically at least 500MB/s per CPU core,
-and scales with the number of available CPU cores. 
+and scales with the number of available CPU cores.
 Decompression speed is typically at least 1GB/s.
 
-This means that in cases where raw IO is below these numbers 
+This means that in cases where raw IO is below these numbers
 compression will not only reduce disk usage but also help increase system throughput.
-Typically, enabling compression on spinning disk systems 
+Typically, enabling compression on spinning disk systems
 will increase speed when the content can be compressed.
 
 ## Get Started
@@ -23,7 +23,7 @@ Install MinIO - [MinIO Quickstart Guide](https://docs.min.io/docs/minio-quicksta
 
 ### 2. Run MinIO with compression
 
-Compression can be enabled by updating the `compress` config settings for MinIO server config. 
+Compression can be enabled by updating the `compress` config settings for MinIO server config.
 Config `compress` settings take extensions and mime-types to be compressed.
 
 ```bash
@@ -42,14 +42,14 @@ To show help on setting compression config values.
 ~ mc admin config set myminio compression
 ```
 
-To enable compression for all content, no matter the extension and content type 
+To enable compression for all content, no matter the extension and content type
 (except for the default excluded types) set BOTH extensions and mime types to empty.
 
 ```bash
 ~ mc admin config set myminio compression enable="on" extensions="" mime_types=""
 ```
 
-The compression settings may also be set through environment variables. 
+The compression settings may also be set through environment variables.
 When set, environment variables override the defined `compress` config settings in the server config.
 
 ```bash
@@ -66,7 +66,7 @@ See [CRIME TLS](https://en.wikipedia.org/wiki/CRIME) as an example of this.
 
 Therefore, compression is disabled when encrypting by default, and must be enabled separately.
 
-Consult our security experts on [SUBNET](https://min.io/pricing) to help you evaluate if 
+Consult our security experts on [SUBNET](https://min.io/pricing) to help you evaluate if
 your setup can use this feature combination safely.
 
 To enable compression+encryption use:
@@ -79,11 +79,11 @@ Or alternatively through the environment variable `MINIO_COMPRESS_ALLOW_ENCRYPTI
 
 ### 4. Excluded Types
 
-- Already compressed objects are not fit for compression since they do not have compressible patterns. 
+- Already compressed objects are not fit for compression since they do not have compressible patterns.
 Such objects do not produce efficient [`LZ compression`](https://en.wikipedia.org/wiki/LZ77_and_LZ78)
 which is a fitness factor for a lossless data compression.
 
-Pre-compressed input typically compresses in excess of 2GiB/s per core, 
+Pre-compressed input typically compresses in excess of 2GiB/s per core,
 so performance impact should be minimal even if precompressed data is re-compressed.
 Decompressing incompressible data has no significant performance impact.
 
@@ -112,7 +112,7 @@ Below is a list of common files and content-types which are typically not suitab
       | `application/x-compress` |
       | `application/x-xz` |
 
-All files with these extensions and mime types are excluded from compression, 
+All files with these extensions and mime types are excluded from compression,
 even if compression is enabled for all types.
 
 ### 5. Notes
@@ -121,7 +121,7 @@ even if compression is enabled for all types.
 
 ## To test the setup
 
-To test this setup, practice put calls to the server using `mc` and use `mc ls` on 
+To test this setup, practice put calls to the server using `mc` and use `mc ls` on
 the data directory to view the size of the object.
 
 ## Explore Further

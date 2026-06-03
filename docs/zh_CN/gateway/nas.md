@@ -1,4 +1,4 @@
-# MinIO NAS网关 [![Slack](https://slack.min.io/slack?type=svg)](https://slack.min.io)
+# MinIO NAS网关
 MinIO网关使用NAS存储支持Amazon S3。你可以在同一个共享NAS卷上运行多个minio实例，作为一个分布式的对象网关。
 
 ## 为NAS存储运行MinIO网关

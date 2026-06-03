@@ -1,4 +1,4 @@
-# 压缩指南 [![Slack](https://slack.min.io/slack?type=svg)](https://slack.min.io)
+# 压缩指南
 
 MinIO Server 允许压缩流以确保有效使用磁盘空间。压缩是在传输中做的，也就是说，对象在写入磁盘之前已被压缩。MinIO使用 [`klauspost/compress/s2`](https://github.com/klauspost/compress/tree/master/s2) 进行流压缩，因为它高效稳定。
 
@@ -47,7 +47,7 @@ export MINIO_COMPRESS_MIME_TYPES="application/pdf"
 
 ### 3. 注意
 
-- 已压缩的对象不具有可压缩的模式，因此不适合再压缩。 此类对象无法产生有效的 [`LZ 压缩`](https://en.wikipedia.org/wiki/LZ77_and_LZ78)。以下是不适合压缩的常见文件和内容类型列表。 
+- 已压缩的对象不具有可压缩的模式，因此不适合再压缩。 此类对象无法产生有效的 [`LZ 压缩`](https://en.wikipedia.org/wiki/LZ77_and_LZ78)。以下是不适合压缩的常见文件和内容类型列表。
 
     - 扩展名
 

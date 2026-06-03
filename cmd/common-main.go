@@ -1,5 +1,6 @@
 /*
  * MinIO Cloud Storage, (C) 2017-2019 MinIO, Inc.
+ * Modifications and additions (C) 2025-2026 soulteary, https://github.com/soulteary/minio
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -111,9 +112,16 @@ func verifyObjectLayerFeatures(name string, objAPI ObjectLayer) {
 
 // Check for updates and print a notification message
 func checkUpdate(mode string) {
-	updateURL := minioReleaseInfoURL
+	updateURL := minioReleaseInfoURL()
 	if runtime.GOOS == globalWindowsOSName {
-		updateURL = minioReleaseWindowsInfoURL
+		updateURL = minioReleaseWindowsInfoURL()
+	}
+
+	// This fork does not operate a release server. When no release URL is
+	// configured (MINIO_UPDATE_RELEASE_URL), skip the update check entirely so
+	// the server never phones home to the upstream download server.
+	if updateURL == "" {
+		return
 	}
 
 	u, err := url.Parse(updateURL)

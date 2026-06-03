@@ -3,6 +3,7 @@
 
 /*
  * MinIO Cloud Storage, (C) 2021 MinIO, Inc.
+ * Modifications and additions (C) 2025-2026 soulteary, https://github.com/soulteary/minio
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,7 +20,12 @@
 
 package cmd
 
-var (
-	// Newer official download info URLs appear earlier below.
-	minioReleaseInfoURL = minioReleaseURL + "minio.sha256sum"
-)
+// minioReleaseInfoURL returns the release-info (sha256sum) URL for this fork,
+// or "" when updates are not configured (see MINIO_UPDATE_RELEASE_URL).
+func minioReleaseInfoURL() string {
+	base := minioReleaseBaseURL()
+	if base == "" {
+		return ""
+	}
+	return base + "minio.sha256sum"
+}

@@ -1,4 +1,4 @@
-# MinIO Bucket Notification Guide [![Slack](https://slack.min.io/slack?type=svg)](https://slack.min.io)
+# MinIO Bucket Notification Guide
 
 Events occurring on objects in a bucket can be monitored using bucket event notifications.
 
@@ -652,7 +652,7 @@ MINIO_NOTIFY_WEBHOOK_QUEUE_DIR    (path)      staging dir for undelivered messag
 MINIO_NOTIFY_WEBHOOK_QUEUE_LIMIT  (number)    maximum limit for undelivered messages, defaults to '100000'
 MINIO_NOTIFY_WEBHOOK_COMMENT      (sentence)  optionally add a comment to this setting
 MINIO_NOTIFY_WEBHOOK_CLIENT_CERT  (string)    client cert for Webhook mTLS auth
-MINIO_NOTIFY_WEBHOOK_CLIENT_KEY   (string)    client cert key for Webhook mTLS auth   
+MINIO_NOTIFY_WEBHOOK_CLIENT_KEY   (string)    client cert key for Webhook mTLS auth
 ```
 
 ```sh

@@ -1,15 +1,15 @@
-# 分布式MinIO快速入门 [![Slack](https://slack.min.io/slack?type=svg)](https://slack.min.io)  [![Docker Pulls](https://img.shields.io/docker/pulls/minio/minio.svg?maxAge=604800)](https://hub.docker.com/r/minio/minio/)
+# 分布式MinIO快速入门
 
-分布式Minio可以让你将多块硬盘（甚至在不同的机器上）组成一个对象存储服务。由于硬盘分布在不同的节点上，分布式Minio避免了单点故障。   
+分布式Minio可以让你将多块硬盘（甚至在不同的机器上）组成一个对象存储服务。由于硬盘分布在不同的节点上，分布式Minio避免了单点故障。
 
 ## 分布式Minio有什么好处?
 
-在大数据领域，通常的设计理念都是无中心和分布式。Minio分布式模式可以帮助你搭建一个高可用的对象存储服务，你可以使用这些存储设备，而不用考虑其真实物理位置。 
+在大数据领域，通常的设计理念都是无中心和分布式。Minio分布式模式可以帮助你搭建一个高可用的对象存储服务，你可以使用这些存储设备，而不用考虑其真实物理位置。
 
 ### 数据保护
 
 
-分布式Minio采用 [纠删码](https://docs.min.io/cn/minio-erasure-code-quickstart-guide)来防范多个节点宕机和[位衰减`bit rot`](https://github.com/minio/minio/blob/master/docs/zh_CN/erasure/README.md#what-is-bit-rot-protection)。  
+分布式Minio采用 [纠删码](https://docs.min.io/cn/minio-erasure-code-quickstart-guide)来防范多个节点宕机和[位衰减`bit rot`](https://github.com/minio/minio/blob/master/docs/zh_CN/erasure/README.md#what-is-bit-rot-protection)。
 
 分布式Minio至少需要4个硬盘，使用分布式Minio自动引入了纠删码功能。
 
@@ -27,7 +27,7 @@ Minio在分布式和单机模式下，所有读写操作都严格遵守**read-af
 
 # 开始吧
 
-如果你了解Minio单机模式的搭建的话，分布式搭建的流程基本一样，Minio服务基于命令行传入的参数自动切换成单机模式还是分布式模式。 
+如果你了解Minio单机模式的搭建的话，分布式搭建的流程基本一样，Minio服务基于命令行传入的参数自动切换成单机模式还是分布式模式。
 
 ## 1. 前提条件
 
@@ -37,20 +37,20 @@ Minio在分布式和单机模式下，所有读写操作都严格遵守**read-af
 
 启动一个分布式Minio实例，你只需要把硬盘位置做为参数传给minio server命令即可，然后，你需要在所有其它节点运行同样的命令。
 
-*注意* 
+*注意*
 
-- 分布式Minio里所有的节点需要有同样的access秘钥和secret秘钥，这样这些节点才能建立联接。为了实现这个，__建议__ 在执行minio server命令之前，在所有节点上先将access秘钥和secret秘钥export成环境变量`MINIO_ROOT_USER` 和 `MINIO_ROOT_PASSWORD`。 
+- 分布式Minio里所有的节点需要有同样的access秘钥和secret秘钥，这样这些节点才能建立联接。为了实现这个，__建议__ 在执行minio server命令之前，在所有节点上先将access秘钥和secret秘钥export成环境变量`MINIO_ROOT_USER` 和 `MINIO_ROOT_PASSWORD`。
 - __MinIO 可创建每组4到16个磁盘组成的纠删码集合。所以你提供的磁盘总数必须是其中一个数字的倍数。__
 - MinIO会根据给定的磁盘总数或者节点总数选择最大的纠删码集合大小，确保统一分布，即每个节点参与每个集合的磁盘数量相等。
 - __每个对象被写入一个EC集合中，因此该对象分布在不超过16个磁盘上。__
 - __建议运行分布式MinIO设置的所有节点都是同构的，即相同的操作系统，相同数量的磁盘和相同的网络互连。__
 - 分布式Minio使用干净的目录，里面没有数据。你也可以与其他程序共享磁盘，这时候只需要把一个子目录单独给MinIO使用即可。例如，你可以把磁盘挂在到`/export`下, 然后把`/export/data`作为参数传给MinIO server即可。
-- 下面示例里的IP仅供示例参考，你需要改成你真实用到的IP和文件夹路径。 
+- 下面示例里的IP仅供示例参考，你需要改成你真实用到的IP和文件夹路径。
 - 分布式Minio里的节点时间差不能超过15分钟，你可以使用[NTP](http://www.ntp.org/) 来保证时间一致。
 - `MINIO_DOMAIN`环境变量应该定义并且导出,以支持bucket DNS style。
 - 在Windows下运行分布式Minio处于实验阶段，请悠着点使用。
 
-示例1: 启动分布式Minio实例，8个节点，每节点1块盘，需要在8个节点上都运行下面的命令。 
+示例1: 启动分布式Minio实例，8个节点，每节点1块盘，需要在8个节点上都运行下面的命令。
 示例1: 在n个节点上启动分布式MinIO实例，每个节点有m个磁盘，分别挂载在`/export1` 到 `/exportm` (如下图所示), 在所有n个节点上运行此命令:
 
 ![Distributed MinIO, n nodes with m drives each](https://github.com/minio/minio/blob/master/docs/screenshots/Architecture-diagram_distributed_nm.png?raw=true)
@@ -83,7 +83,7 @@ minio server http://host{1...4}/export{1...16} http://host{5...12}/export{1...16
 
 现在整个集群就扩展了 _(newly_added_servers\*m)_ 个磁盘，总磁盘变为 _(existing_servers\*m)+(newly_added_servers\*m)_ 个，新的对象上传请求会自动分配到最少使用的集群上。通过以上扩展策略，您就可以按需扩展您的集群。重新配置后重启集群，会立即在集群中生效，并对现有集群无影响。如上命令中，我们可以把原来的集群看做一个区，新增集群看做另一个区，新对象按每个区域中的可用空间比例放置在区域中。在每个区域内，基于确定性哈希算法确定位置。
 
-> __说明:__ __您添加的每个区域必须具有与原始区域相同的磁盘数量（纠删码集）大小，以便维持相同的数据冗余SLA。__ 
+> __说明:__ __您添加的每个区域必须具有与原始区域相同的磁盘数量（纠删码集）大小，以便维持相同的数据冗余SLA。__
 > 例如，第一个区有8个磁盘，您可以将集群扩展为16个、32个或1024个磁盘的区域，您只需确保部署的SLA是原始区域的倍数即可。
 
 

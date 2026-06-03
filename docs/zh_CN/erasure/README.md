@@ -1,4 +1,4 @@
-# Minio纠删码快速入门 [![Slack](https://slack.min.io/slack?type=svg)](https://slack.min.io)
+# Minio纠删码快速入门
 
 Minio使用纠删码`erasure code`和`checksum`来保护数据免受硬件故障和无声数据损坏。 即便您丢失一半数量（N/2）的硬盘，您仍然可以恢复数据。
 

@@ -1,16 +1,16 @@
-# Select API Quickstart Guide [![Slack](https://slack.min.io/slack?type=svg)](https://slack.min.io)
+# Select API Quickstart Guide
 Traditional retrieval of objects is always as whole entities, i.e GetObject for a 5 GiB object, will always return 5 GiB of data. S3 Select API allows us to retrieve a subset of data by using simple SQL expressions. By using Select API to retrieve only the data needed by the application, drastic performance improvements can be achieved.
 
 You can use the Select API to query objects with following features:
 
-- Objects must be in CSV, JSON, or Parquet(*) format. 
+- Objects must be in CSV, JSON, or Parquet(*) format.
 - UTF-8 is the only encoding type the Select API supports.
 - GZIP or BZIP2 - CSV and JSON files can be compressed using GZIP or BZIP2. The Select API supports columnar compression for Parquet using GZIP, Snappy, LZ4. Whole object compression is not supported for Parquet objects.
 - Server-side encryption - The Select API supports querying objects that are protected with server-side encryption.
 
 Type inference and automatic conversion of values is performed based on the context when the value is un-typed (such as when reading CSV data). If present, the CAST function overrides automatic conversion.
 
-The [mc sql](https://docs.min.io/docs/minio-client-complete-guide.html#sql) command can be used for executing queries using the command line. 
+The [mc sql](https://docs.min.io/docs/minio-client-complete-guide.html#sql) command can be used for executing queries using the command line.
 
 (*) Parquet is disabled on the MinIO server by default. See below how to enable it.
 
@@ -21,7 +21,7 @@ Parquet is DISABLED by default since hostile crafted input can easily crash the 
 If you are in a controlled environment where it is safe to assume no hostile content can be uploaded to your cluster you can safely enable Parquet.
 To enable Parquet set the environment variable `MINIO_API_SELECT_PARQUET=on`.
 
-# Example using Python API 
+# Example using Python API
 
 ## 1. Prerequisites
 - Install MinIO Server from [here](http://docs.min.io/docs/minio-quickstart-guide).

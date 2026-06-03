@@ -1,4 +1,4 @@
-# 使用Docker Swarm部署MinIO [![Slack](https://slack.min.io/slack?type=svg)](https://slack.min.io)  [![Docker Pulls](https://img.shields.io/docker/pulls/minio/minio.svg?maxAge=604800)](https://hub.docker.com/r/minio/minio/)
+# 使用Docker Swarm部署MinIO
 
 Docker Engine在Swarm模式下提供集群管理和编排功能。 MinIO服务器可以在Swarm的分布式模式下轻松部署，创建一个多租户，高可用性和可扩展的对象存储。
 
@@ -19,7 +19,7 @@ docker swarm init --advertise-addr <MANAGER-IP>
 
 ```shell
 docker swarm join \
-  --token  SWMTKN-1-49nj1cmql0jkz5s954yi3oex3nedyz0fb0xx14ie39trti4wxv-8vxv8rssmk743ojnwacrr2e7c \
+  --token  <SWARM-MANAGER-TOKEN> \
   192.168.99.100:2377
 ```
 
@@ -59,7 +59,7 @@ docker volume ls
 然后删除`minio_stack` volumes
 
 ```shell
-docker volume rm volume_name 
+docker volume rm volume_name
 ```
 
 ### 注意事项

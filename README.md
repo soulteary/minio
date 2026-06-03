@@ -1,12 +1,22 @@
-# MinIO Quickstart Guide
-[![Slack](https://slack.min.io/slack?type=svg)](https://slack.min.io) [![Docker Pulls](https://img.shields.io/docker/pulls/minio/minio.svg?maxAge=604800)](https://hub.docker.com/r/minio/minio/)
+# MinIO Quickstart Guide (community fork)
 
-[![MinIO](https://raw.githubusercontent.com/minio/minio/master/.github/logo.svg?sanitize=true)](https://min.io)
+MinIO is a High Performance Object Storage. It is API compatible with the Amazon S3 cloud storage service. Use MinIO to build high performance infrastructure for machine learning, analytics and application data workloads.
 
-MinIO is a High Performance Object Storage released under Apache License v2.0. It is API compatible with Amazon S3 cloud storage service. Use MinIO to build high performance infrastructure for machine learning, analytics and application data workloads.
+This README provides quickstart instructions on running MinIO on baremetal hardware, including Docker-based installations.
 
-This README provides quickstart instructions on running MinIO on baremetal hardware, including Docker-based installations. For Kubernetes environments,
-use the [MinIO Kubernetes Operator](https://github.com/minio/operator/blob/master/README.md).
+> **⚠️ This is an independent, community-maintained fork of the upstream MinIO project.**
+>
+> This project is **NOT** affiliated with, endorsed by, or sponsored by MinIO, Inc.
+> "MinIO" is a trademark of MinIO, Inc., used here solely to identify the upstream
+> project from which this fork is derived. No trademark rights are granted by the
+> Apache License 2.0 (see Section 6 of the license).
+>
+> This fork is based on the **last Apache License 2.0 release of MinIO**, prior to
+> MinIO's relicensing to the GNU AGPLv3, and remains distributed under the
+> [Apache License, Version 2.0](./LICENSE). The original copyright notices of
+> MinIO, Inc. and all third-party subcomponents are retained — see [`NOTICE`](./NOTICE).
+>
+> Fork home: https://github.com/soulteary/minio
 
 ## About this fork
 
@@ -16,6 +26,11 @@ This repository is a customized fork of MinIO and differs from upstream in the f
 - **Bucket notification targets**: only `elasticsearch`, `mysql`, `postgresql`, `redis`, and `webhook` are supported. The message-queue targets (Kafka, NATS, NATS Streaming, NSQ, AMQP, MQTT) have been removed.
 - **Gateways**: only the `nas` and `s3` gateways remain. The `azure`, `gcs`, and `hdfs` gateways have been removed.
 - **Toolchain**: requires Go `1.26` or newer (see `go.mod`).
+
+> NOTE: Throughout this guide, upstream links (`docs.min.io`, `dl.min.io`,
+> `hub.docker.com/r/minio/minio`, etc.) and the `minio/minio` image refer to the
+> **original upstream project**, not to this fork. Build this fork from source
+> (see [Install from Source](#install-from-source)) to use the customizations above.
 
 # Docker Installation
 
@@ -193,10 +208,15 @@ service minio start
 
 # Install from Source
 
-Use the following commands to compile and run a standalone MinIO server from source. Source installation is only intended for developers and advanced users. If you do not have a working Golang environment, please follow [How to install Golang](https://golang.org/doc/install). Minimum version required is [go1.16](https://golang.org/dl/#stable)
+Use the following commands to compile and run a standalone MinIO server from source. Source installation is only intended for developers and advanced users. If you do not have a working Golang environment, please follow [How to install Golang](https://golang.org/doc/install). This fork requires **Go 1.26 or newer** (see `go.mod`).
+
+To build this fork (with the Fiber-based router and other customizations), clone and build it directly:
 
 ```sh
-GO111MODULE=on go get github.com/minio/minio
+git clone https://github.com/soulteary/minio.git
+cd minio
+make build
+./minio server /data
 ```
 
 The MinIO deployment starts using default root credentials `minioadmin:minioadmin`. You can test the deployment using the MinIO Browser, an embedded
@@ -314,8 +334,13 @@ mc admin update <minio alias, e.g., myminio>
 - [Use `minio-go` SDK with MinIO Server](https://docs.min.io/docs/golang-client-quickstart-guide)
 - [The MinIO documentation website](https://docs.min.io)
 
-# Contribute to MinIO Project
-Please follow MinIO [Contributor's Guide](https://github.com/minio/minio/blob/master/CONTRIBUTING.md)
+# Contribute to this fork
+Contributions to this fork are welcome via its repository at https://github.com/soulteary/minio.
+For the upstream project's conventions, see the original MinIO [Contributor's Guide](https://github.com/minio/minio/blob/master/CONTRIBUTING.md).
 
 # License
-Use of MinIO is governed by the Apache 2.0 License found at [LICENSE](https://github.com/minio/minio/blob/master/LICENSE).
+This fork is governed by the Apache License, Version 2.0, found at [LICENSE](./LICENSE).
+Attribution and third-party notices are listed in [NOTICE](./NOTICE).
+
+"MinIO" is a trademark of MinIO, Inc. This fork is not affiliated with, endorsed by,
+or sponsored by MinIO, Inc.

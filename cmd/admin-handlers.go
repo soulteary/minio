@@ -1,5 +1,6 @@
 /*
  * MinIO Cloud Storage, (C) 2016-2020 MinIO, Inc.
+ * Modifications and additions (C) 2025-2026 soulteary, https://github.com/soulteary/minio
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -96,9 +97,21 @@ func (a adminAPIHandlers) ServerUpdateHandler(w http.ResponseWriter, r *http.Req
 	updateURL := urlVar(r, "updateURL")
 	mode := getMinioMode()
 	if updateURL == "" {
-		updateURL = minioReleaseInfoURL
+		updateURL = minioReleaseInfoURL()
 		if runtime.GOOS == globalWindowsOSName {
-			updateURL = minioReleaseWindowsInfoURL
+			updateURL = minioReleaseWindowsInfoURL()
+		}
+		// This fork does not operate a release server. Without an explicit
+		// updateURL and without MINIO_UPDATE_RELEASE_URL configured, refuse to
+		// fall back to the upstream download server (which would replace this
+		// fork's binary with the upstream binary).
+		if updateURL == "" {
+			writeErrorResponseJSON(ctx, w, toAdminAPIErr(ctx, AdminError{
+				Code:       AdminUpdateUnexpectedFailure,
+				Message:    "no update source configured: set MINIO_UPDATE_RELEASE_URL or pass an explicit updateURL to `mc admin update`",
+				StatusCode: http.StatusBadRequest,
+			}), r.URL)
+			return
 		}
 	}
 

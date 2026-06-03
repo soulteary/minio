@@ -1,4 +1,4 @@
-# 分布式服务器设计指南 [![Slack](https://slack.min.io/slack?type=svg)](https://slack.min.io)
+# 分布式服务器设计指南
 该文档介绍了分布式MinIO服务器的设计、架构和高级用法。
 
 ## 命令行

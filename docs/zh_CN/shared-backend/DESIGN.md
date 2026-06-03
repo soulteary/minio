@@ -1,4 +1,4 @@
-介绍 [![Slack](https://slack.min.io/slack?type=svg)](https://slack.min.io)
+介绍
 ------------
 
 该特性可以让多个Minio实例使用一个共享的NAS存储，而且不需要做什么特殊的设置。文件默认已经做了同步以及加锁。

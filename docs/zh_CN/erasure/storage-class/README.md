@@ -1,4 +1,4 @@
-# MinIO 存储类型快速入门 [![Slack](https://slack.min.io/slack?type=svg)](https://slack.min.io)
+# MinIO 存储类型快速入门
 
 在纠删码模式下,MinIO server支持存储类型. 这可以指定每个对象的数据和奇偶校验盘，其实就是可以为对象选择不同的存储类型.
 

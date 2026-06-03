@@ -1,4 +1,4 @@
-# MinIO存储桶通知指南 [![Slack](https://slack.min.io/slack?type=svg)](https://slack.min.io)
+# MinIO存储桶通知指南
 
 可以使用存储桶事件通知来监视存储桶中对象上发生的事件。 MinIO服务器支持的事件类型是
 
@@ -70,7 +70,7 @@ queue_dir    (path)               未发送消息的暂存目录 例如 '/home/e
 queue_limit  (number)             未发送消息的最大限制, 默认是'100000'
 comment      (sentence)           可选的注释
 ```
- 
+
 或者通过环境变量(配置说明参考上面)
 
 ```
@@ -231,7 +231,7 @@ queue_dir    (path)               未发送消息的暂存目录 例如 '/home/e
 queue_limit  (number)             未发送消息的最大限制, 默认是'100000'
 comment      (sentence)           可选的注释说明
 ```
-          
+
 或者通过环境变量(配置说明参考上面)
 
 ```
@@ -591,7 +591,7 @@ client_cert  (string)    Webhook的mTLS身份验证的客户端证书
 client_key   (string)    Webhook的mTLS身份验证的客户端证书密钥
 comment      (sentence)  可选的注释说明
 ```
- 
+
 或者通过环境变量（说明参见上面）
 ```
 KEY:
@@ -605,7 +605,7 @@ MINIO_NOTIFY_WEBHOOK_QUEUE_DIR    (path)      staging dir for undelivered messag
 MINIO_NOTIFY_WEBHOOK_QUEUE_LIMIT  (number)    maximum limit for undelivered messages, defaults to '100000'
 MINIO_NOTIFY_WEBHOOK_COMMENT      (sentence)  optionally add a comment to this setting
 MINIO_NOTIFY_WEBHOOK_CLIENT_CERT  (string)    client cert for Webhook mTLS auth
-MINIO_NOTIFY_WEBHOOK_CLIENT_KEY   (string)    client cert key for Webhook mTLS auth   
+MINIO_NOTIFY_WEBHOOK_CLIENT_KEY   (string)    client cert key for Webhook mTLS auth
 ```
 
 ```sh
