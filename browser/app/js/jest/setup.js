@@ -18,4 +18,9 @@ import "jest-enzyme"
 import { configure } from "enzyme"
 import Adapter from "enzyme-adapter-react-16"
 
+// jsdom (jest 29+) no longer exposes setImmediate, which some tests rely on.
+if (typeof global.setImmediate === "undefined") {
+  global.setImmediate = (fn, ...args) => global.setTimeout(fn, 0, ...args)
+}
+
 configure({ adapter: new Adapter() })

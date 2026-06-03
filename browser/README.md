@@ -5,22 +5,21 @@
 
 ## Installation
 
-### Install node
+### Install bun
 ```sh
-curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.34.0/install.sh | bash
+curl -fsSL https://bun.sh/install | bash
 exec -l $SHELL
-nvm install stable
 ```
 
-### Install node dependencies
+### Install dependencies
 ```sh
-npm install
+bun install
 ```
 
 ## Generating Assets
 
 ```sh
-npm run release
+bun run release
 ```
 
 This generates `production` in the current directory. 
@@ -31,7 +30,7 @@ This generates `production` in the current directory.
 ### Run MinIO Browser with live reload
 
 ```sh
-npm run dev
+bun run dev
 ```
 
 Open [http://localhost:8080/minio/](http://localhost:8080/minio/) in your browser to play with the application.
@@ -65,7 +64,7 @@ index 3ccdaba..9496c56 100644
 ```
 
 ```sh
-npm run dev
+bun run dev
 ```
 
 Open [http://localhost:8888/minio/](http://localhost:8888/minio/) in your browser to play with the application.
@@ -90,7 +89,7 @@ index 8bdbba53..139f6049 100644
 ```
 
 ```sh
-npm run dev
+bun run dev
 ```
 
 Open [http://IP:8080/minio/](http://IP:8080/minio/) in your browser to play with the application.
@@ -98,7 +97,7 @@ Open [http://IP:8080/minio/](http://IP:8080/minio/) in your browser to play with
 
 ## Run tests
 
-    npm run test
+    bun run test
 
 
 ## Docker development environment
@@ -124,8 +123,8 @@ Run container, build and run core
 docker run -it --rm --name minio-dev -v "$PWD":/minio minio-dev
 
 cd /minio/browser
-npm install
-npm run release
+bun install
+bun run release
 cd /minio
 make
 ./minio server /data
@@ -161,8 +160,8 @@ EOF
 Build and run frontend with auto-reload
 ```sh
 cd /minio/browser
-npm install
-npm run dev
+bun install
+bun run dev
 ```
 
 Open [http://IP:8080/minio/](http://IP:8080/minio/) in your browser to play with the application.
